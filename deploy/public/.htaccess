@@ -1,0 +1,17 @@
+RewriteEngine On
+RewriteBase /
+
+# PHP FastCGI fix - pass Authorization header to PHP
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Route /api/* to api/index.php
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteCond %{REQUEST_URI} !^/api/index\.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule .* api/index.php [L]
+
+# Everything else to Angular index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]

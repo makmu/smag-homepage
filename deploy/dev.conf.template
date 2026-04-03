@@ -1,0 +1,4 @@
+DEPLOY_HOST=<dev host>
+DEPLOYMENTS_FOLDER=.deployments-dev
+LIVE_SYMLINK=dev
+ANGULAR_CONFIG=dev

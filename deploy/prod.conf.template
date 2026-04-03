@@ -1,0 +1,4 @@
+DEPLOY_HOST=<production host>
+DEPLOYMENTS_FOLDER=.deployments-live
+LIVE_SYMLINK=live
+ANGULAR_CONFIG=production

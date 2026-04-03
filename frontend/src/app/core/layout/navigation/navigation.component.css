@@ -1,0 +1,17 @@
+.nav-item {
+  position: relative;
+}
+
+.nav-link {
+  display: block;
+}
+
+.nav-item:has(.active)::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background-color: var(--indicator-color, transparent);
+}

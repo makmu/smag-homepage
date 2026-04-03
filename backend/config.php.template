@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'DB_PATH' => __DIR__ . '/../data/database.sqlite',
+    'ACCESS_TOKEN_TTL' => 900,
+    'REFRESH_TOKEN_TTL' => 2592000,
+    'SLOW_MODE_DELAY' => 0,
+    'TIMEZONE' => 'Europe/Berlin',
+    'SMTP_FROM_EMAIL' => 'noreply@smag.example',
+    'SMTP_FROM_NAME' => 'SMAG Anmeldung',
+    'SMTP_HOST' => 'smtp.example.com',
+    'SMTP_USERNAME' => 'your-smtp-username',
+    'SMTP_PASSWORD' => 'your-smtp-password',
+    'SMTP_PORT' => 587,
+];
