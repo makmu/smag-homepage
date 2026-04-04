@@ -207,6 +207,10 @@ export class SignupDialogComponent implements OnDestroy, AfterViewInit {
     }
 
     ngAfterViewInit(): void {
+        // Reset state for dialog re-open
+        this.turnstileWidgetId = null;
+        this.turnstileToken = '';
+        
         if (isPlatformBrowser(this.platformId) && this.turnstileSiteKey) {
             const win = window as unknown as { turnstile?: Turnstile };
             if (win.turnstile) {
@@ -236,6 +240,11 @@ export class SignupDialogComponent implements OnDestroy, AfterViewInit {
     }
     
     private renderTurnstile(): void {
+        // Prevent duplicate widgets
+        if (this.turnstileWidgetId) {
+            return;
+        }
+        
         const win = window as unknown as { turnstile?: Turnstile };
         const turnstile = win.turnstile;
         
