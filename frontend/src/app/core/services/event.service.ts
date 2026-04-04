@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { SignupType } from '../../shared/event-modal/event-modal.component';
+import { AuthService } from '../auth/auth.service';
 
 interface EventApiItem {
     id: number;
@@ -176,10 +177,14 @@ function mapApiToFullEvent(item: EventApiFullItem): Event {
 @Injectable({ providedIn: 'root' })
 export class EventService {
     private readonly http = inject(HttpClient);
+    private readonly auth = inject(AuthService);
     private readonly apiUrl = environment.apiUrl;
 
     getEvents(): Observable<Event[]> {
-        return this.http.get<EventApiResponse>(`${this.apiUrl}/events`).pipe(
+        const showAll = this.auth.isLoggedIn();
+        const params = new HttpParams().set('include_past', showAll ? 'true' : 'false');
+        
+        return this.http.get<EventApiResponse>(`${this.apiUrl}/events`, { params }).pipe(
             map(response => response.data.items.map(mapApiToEvent))
         );
     }
