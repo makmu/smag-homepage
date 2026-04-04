@@ -123,9 +123,24 @@ final class EventController
 
     public function getEvents(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $stmt = $this->getDb()->query(
-            'SELECT id, title, teaser, location, date, signup_deadline, signup_limit FROM events ORDER BY date ASC'
-        );
+        $includePast = $request->getQueryParams()['include_past'] ?? false;
+        $showAll = filter_var($includePast, FILTER_VALIDATE_BOOLEAN);
+
+        $sql = 'SELECT id, title, teaser, location, date, signup_deadline, signup_limit FROM events';
+        $params = [];
+
+        if (!$showAll) {
+            $config = $this->getConfig();
+            $timezone = new \DateTimeZone($config['TIMEZONE'] ?? 'UTC');
+            $today = (new \DateTime('now', $timezone))->format('Y-m-d');
+            $sql .= ' WHERE date >= :today';
+            $params['today'] = $today;
+        }
+
+        $sql .= ' ORDER BY date ASC';
+
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute($params);
         $events = $stmt->fetchAll();
 
         $items = array_map(function($e) {
@@ -145,9 +160,8 @@ final class EventController
             return $item;
         }, $events);
 
-        $data = ['data' => ['items' => $items]];
-        $response->getBody()->write(json_encode($data));
-        return $response;
+        $data = ['items' => $items];
+        return $this->successResponse($response, $data);
     }
 
     public function getEvent(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
