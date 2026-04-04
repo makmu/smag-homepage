@@ -1,3 +1,4 @@
 export const environment = {
-    apiUrl: '/api/v1'
+    apiUrl: '/api/v1',
+    turnstileSiteKey: ''
 };

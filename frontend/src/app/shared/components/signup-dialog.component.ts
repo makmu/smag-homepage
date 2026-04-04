@@ -1,10 +1,24 @@
-import { Component, input, output, signal, inject } from '@angular/core';
+import { Component, input, output, signal, inject, PLATFORM_ID, Inject, ChangeDetectionStrategy, ViewChild, ElementRef, OnDestroy, AfterViewInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { isPlatformBrowser } from '@angular/common';
 import { EventSignup } from '../../features/events/event-detail.component';
 import { EventService, SignupRequest } from '../../core/services/event.service';
+import { environment } from '../../../environments/environment';
+
+interface Turnstile {
+    render(container: HTMLElement | string, options: TurnstileOptions): string;
+}
+
+interface TurnstileOptions {
+    sitekey: string;
+    callback: (token: string) => void;
+    'expired-callback': () => void;
+    'error-callback': () => void;
+}
 
 @Component({
     selector: 'app-signup-dialog',
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [FormsModule],
     template: `
         <div 
@@ -23,7 +37,7 @@ import { EventService, SignupRequest } from '../../core/services/event.service';
                 <button 
                     type="button"
                     class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                    (click)="close.emit()"
+                    (click)="onClose()"
                     [disabled]="isSubmitting()"
                 >
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +56,7 @@ import { EventService, SignupRequest } from '../../core/services/event.service';
                         <button 
                             type="button"
                             class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors"
-                            (click)="close.emit()"
+                            (click)="onClose()"
                         >
                             Schließen
                         </button>
@@ -125,6 +139,13 @@ import { EventService, SignupRequest } from '../../core/services/event.service';
                             }
                         </div>
                         
+                        <!-- Turnstile widget -->
+                        @if (hasTurnstile) {
+                            <div class="mb-4">
+                                <div #turnstileContainer class="cf-turnstile"></div>
+                            </div>
+                        }
+                        
                         <!-- Buttons -->
                         <div class="flex justify-end gap-3 mt-6">
                             <button 
@@ -137,7 +158,7 @@ import { EventService, SignupRequest } from '../../core/services/event.service';
                             </button>
                             <button 
                                 type="submit"
-                                [disabled]="!name || !email || isSubmitting()"
+                                [disabled]="!name || !email || isSubmitting() || (hasTurnstile && !turnstileToken)"
                                 class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 @if (isSubmitting()) {
@@ -155,8 +176,15 @@ import { EventService, SignupRequest } from '../../core/services/event.service';
         </div>
     `
 })
-export class SignupDialogComponent {
+export class SignupDialogComponent implements OnDestroy, AfterViewInit {
     private readonly eventService = inject(EventService);
+    private readonly platformId = inject(PLATFORM_ID);
+    private turnstileWidgetId: string | null = null;
+    private readonly turnstileSiteKey: string = environment.turnstileSiteKey;
+
+    @ViewChild('turnstileContainer') turnstileContainer?: ElementRef<HTMLDivElement>;
+
+    get hasTurnstile(): boolean { return !!this.turnstileSiteKey; }
 
     eventId = input.required<number>();
     close = output<void>();
@@ -166,19 +194,103 @@ export class SignupDialogComponent {
     name = '';
     email = '';
     comment = '';
+    turnstileToken = '';
     
     isSubmitting = signal(false);
     success = signal(false);
     error = signal<string | null>(null);
+    
+    constructor() {
+        if (isPlatformBrowser(this.platformId) && this.turnstileSiteKey) {
+            this.loadTurnstileScript();
+        }
+    }
+
+    ngAfterViewInit(): void {
+        if (isPlatformBrowser(this.platformId) && this.turnstileSiteKey) {
+            const win = window as unknown as { turnstile?: Turnstile };
+            if (win.turnstile) {
+                this.renderTurnstile();
+            }
+        }
+    }
+
+    ngOnDestroy(): void {
+        this.removeTurnstileWidget();
+    }
+
+    private loadTurnstileScript(): void {
+        const win = window as unknown as { turnstile?: Turnstile };
+        if (win.turnstile) {
+            this.renderTurnstile();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        script.async = true;
+        script.defer = true;
+        script.id = 'turnstile-script';
+        script.onload = () => this.renderTurnstile();
+        document.head.appendChild(script);
+    }
+    
+    private renderTurnstile(): void {
+        const win = window as unknown as { turnstile?: Turnstile };
+        const turnstile = win.turnstile;
+        
+        if (!turnstile || !this.turnstileContainer?.nativeElement) {
+            setTimeout(() => this.renderTurnstile(), 100);
+            return;
+        }
+
+        this.turnstileWidgetId = turnstile.render(this.turnstileContainer.nativeElement, {
+            sitekey: this.turnstileSiteKey,
+            callback: (token: string) => {
+                this.turnstileToken = token;
+            },
+            'expired-callback': () => {
+                this.turnstileToken = '';
+            },
+            'error-callback': () => {
+                this.turnstileToken = '';
+            }
+        });
+    }
+
+    private removeTurnstileWidget(): void {
+        if (this.turnstileWidgetId) {
+            const win = window as unknown as { turnstile?: { remove?: (id: string) => void } };
+            if (win.turnstile?.remove) {
+                win.turnstile.remove(this.turnstileWidgetId);
+            }
+            this.turnstileWidgetId = null;
+            this.turnstileToken = '';
+        }
+    }
     
     onBackdropClick(event: MouseEvent): void {
         if ((event.target as HTMLElement).classList.contains('fixed') && !this.isSubmitting()) {
             this.close.emit();
         }
     }
+
+    onClose(): void {
+        this.removeTurnstileWidget();
+        this.close.emit();
+    }
     
     onSubmit(): void {
         if (!this.name || !this.email || this.isSubmitting()) {
+            return;
+        }
+
+        if (this.hasTurnstile && !this.turnstileToken) {
+            if (!this.turnstileContainer?.nativeElement) {
+                this.loadTurnstileScript();
+                setTimeout(() => this.renderTurnstile(), 100);
+            }
+            this.error.set('Bitte bestätige, dass du kein Roboter bist.');
             return;
         }
         
@@ -188,7 +300,8 @@ export class SignupDialogComponent {
         const request: SignupRequest = {
             name: this.name,
             email: this.email,
-            comment: this.comment || undefined
+            comment: this.comment || undefined,
+            cf_turnstile_token: this.turnstileToken || undefined
         };
         
         this.eventService.signup(this.eventId(), request).subscribe({

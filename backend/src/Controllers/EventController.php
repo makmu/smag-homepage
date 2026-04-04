@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Database\Database;
 use App\Services\MailService;
+use App\Services\TurnstileService;
 use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -38,6 +39,16 @@ final class EventController
     {
         $eventId = (int) $args['id'];
         $data = $request->getParsedBody();
+        $config = $this->getConfig();
+
+        // Turnstile captcha validation
+        if ($config['TURNSTILE_ENABLED'] ?? false) {
+            $turnstileService = new TurnstileService();
+            $token = $data['cf_turnstile_token'] ?? '';
+            if (!$turnstileService->verify($token)) {
+                return $this->errorResponse($response, 400, 'Ein Fehler ist aufgetreten. Bitte wende dich an smag@fliederlich.de.');
+            }
+        }
 
         $event = $this->getEventById($eventId);
 

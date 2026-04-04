@@ -14,4 +14,7 @@ return [
     'SMTP_USERNAME' => 'your-smtp-username',
     'SMTP_PASSWORD' => 'your-smtp-password',
     'SMTP_PORT' => 587,
+    'TURNSTILE_ENABLED' => false,
+    'TURNSTILE_SITE_KEY' => '',
+    'TURNSTILE_SECRET_KEY' => '',
 ];

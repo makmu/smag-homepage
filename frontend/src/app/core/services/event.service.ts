@@ -81,6 +81,7 @@ export interface SignupRequest {
     name: string;
     email: string;
     comment?: string;
+    cf_turnstile_token?: string;
 }
 
 export interface SignupResponse {
