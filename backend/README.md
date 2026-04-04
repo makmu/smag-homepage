@@ -28,6 +28,9 @@ vi config.php
 | `SMTP_USERNAME` | `your-smtp-username` | SMTP authentication username |
 | `SMTP_PASSWORD` | `your-smtp-password` | SMTP authentication password |
 | `SMTP_PORT` | `587` | SMTP server port |
+| `TURNSTILE_ENABLED` | `false` | Enable Cloudflare Turnstile captcha for event signups |
+| `TURNSTILE_SITE_KEY` | `''` | Cloudflare Turnstile site key (get from Cloudflare dashboard) |
+| `TURNSTILE_SECRET_KEY` | `''` | Cloudflare Turnstile secret key (get from Cloudflare dashboard) |
 
 ## Seeding the Database
 
