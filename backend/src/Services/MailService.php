@@ -38,7 +38,8 @@ final class MailService
 
             $mail->send();
             return true;
-        } catch (Exception) {
+        } catch (Exception $e) {
+            error_log('Mail send failed: ' . $e->getMessage());
             return false;
         }
     }
