@@ -121,7 +121,11 @@ final class EventController
         $body .= 'Datum: ' . $this->formatDateInLocalTime($event['date'], $config) . PHP_EOL;
         $body .= 'Ort: ' . $event['location'] . PHP_EOL . PHP_EOL;
         $body .= 'Wir freuen uns auf dich!';
-        $mailService->send($email, $subject, $body);
+        $mailSent = $mailService->send($email, $subject, $body);
+
+        if (!$mailSent) {
+            return $this->errorResponse($response, 500, 'Anmeldung erfolgreich, aber Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte wende dich an smag@fliederlich.de.');
+        }
 
         return $this->successResponse($response, [
             'id' => $signupId,

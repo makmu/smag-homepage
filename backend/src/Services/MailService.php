@@ -26,6 +26,8 @@ final class MailService
             $mail->Host = $config['SMTP_HOST'];
             $mail->Username = $config['SMTP_USERNAME'];
             $mail->Password = $config['SMTP_PASSWORD'];
+            $mail->SMTPAuth = true;
+            $mail->SMTPSecure = $config['SMTP_ENCRYPTION'];
             $mail->Port = $config['SMTP_PORT'];
             $mail->setFrom($config['SMTP_FROM_EMAIL'], $config['SMTP_FROM_NAME']);
             $mail->addAddress($toEmail);
@@ -36,7 +38,8 @@ final class MailService
 
             $mail->send();
             return true;
-        } catch (Exception) {
+        } catch (Exception $e) {
+            error_log('Mail send failed: ' . $e->getMessage());
             return false;
         }
     }
