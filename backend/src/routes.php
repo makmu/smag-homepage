@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Controllers\EventController;
 use App\Controllers\AuthController;
+use App\Controllers\NewsletterController;
 use App\Services\TokenService;
 use App\Services\UserService;
 use App\Middleware\TokenAuthenticationMiddleware;
@@ -29,4 +30,8 @@ return function (App $app): void {
     $app->get('/api/v1/events/{eventId}/signups/{signupId}', [$eventController, 'getSignupDetail'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->delete('/api/v1/events/{eventId}/signups/{signupId}', [$eventController, 'deleteSignup'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->get('/api/v1/events/{id}/signups/csv', [$eventController, 'downloadSignupsCsv'])->add(new TokenAuthenticationMiddleware($tokenService));
+
+    $newsletterController = new NewsletterController();
+    $app->post('/api/v1/newsletter/subscribe', [$newsletterController, 'subscribe']);
+    $app->post('/api/v1/newsletter/unsubscribe', [$newsletterController, 'unsubscribe']);
 };

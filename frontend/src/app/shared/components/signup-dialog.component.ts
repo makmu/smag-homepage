@@ -1,25 +1,14 @@
-import { Component, input, output, signal, inject, PLATFORM_ID, Inject, ChangeDetectionStrategy, ViewChild, ElementRef, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, input, output, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { isPlatformBrowser } from '@angular/common';
 import { EventSignup } from '../../features/events/event-detail.component';
 import { EventService, SignupRequest } from '../../core/services/event.service';
 import { environment } from '../../../environments/environment';
-
-interface Turnstile {
-    render(container: HTMLElement | string, options: TurnstileOptions): string;
-}
-
-interface TurnstileOptions {
-    sitekey: string;
-    callback: (token: string) => void;
-    'expired-callback': () => void;
-    'error-callback': () => void;
-}
+import { TurnstileComponent } from '../../shared/components/turnstile.component';
 
 @Component({
     selector: 'app-signup-dialog',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [FormsModule],
+    imports: [FormsModule, TurnstileComponent],
     template: `
         <div 
             class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -141,9 +130,7 @@ interface TurnstileOptions {
                         
                         <!-- Turnstile widget -->
                         @if (hasTurnstile) {
-                            <div class="mb-4">
-                                <div #turnstileContainer class="cf-turnstile"></div>
-                            </div>
+                            <app-turnstile [siteKey]="turnstileSiteKey" (tokenChange)="onTokenChange($event)" />
                         }
                         
                         <!-- Buttons -->
@@ -158,7 +145,7 @@ interface TurnstileOptions {
                             </button>
                             <button 
                                 type="submit"
-                                [disabled]="!name || !email || isSubmitting() || (hasTurnstile && !turnstileToken)"
+                                [disabled]="!name || !email || isSubmitting() || (hasTurnstile && !turnstileToken())"
                                 class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 @if (isSubmitting()) {
@@ -176,14 +163,9 @@ interface TurnstileOptions {
         </div>
     `
 })
-export class SignupDialogComponent implements OnDestroy, AfterViewInit {
+export class SignupDialogComponent {
     private readonly eventService = inject(EventService);
-    private readonly platformId = inject(PLATFORM_ID);
-    private turnstileWidgetId: string | null = null;
-    private readonly turnstileSiteKey: string = environment.turnstileSiteKey;
-
-    @ViewChild('turnstileContainer') turnstileContainer?: ElementRef<HTMLDivElement>;
-
+    readonly turnstileSiteKey: string = environment.turnstileSiteKey;
     get hasTurnstile(): boolean { return !!this.turnstileSiteKey; }
 
     eventId = input.required<number>();
@@ -194,88 +176,14 @@ export class SignupDialogComponent implements OnDestroy, AfterViewInit {
     name = '';
     email = '';
     comment = '';
-    turnstileToken = '';
-    
+
+    turnstileToken = signal('');
     isSubmitting = signal(false);
     success = signal(false);
     error = signal<string | null>(null);
-    
-    constructor() {
-        if (isPlatformBrowser(this.platformId) && this.turnstileSiteKey) {
-            this.loadTurnstileScript();
-        }
-    }
 
-    ngAfterViewInit(): void {
-        // Reset state for dialog re-open
-        this.turnstileWidgetId = null;
-        this.turnstileToken = '';
-        
-        if (isPlatformBrowser(this.platformId) && this.turnstileSiteKey) {
-            const win = window as unknown as { turnstile?: Turnstile };
-            if (win.turnstile) {
-                this.renderTurnstile();
-            }
-        }
-    }
-
-    ngOnDestroy(): void {
-        this.removeTurnstileWidget();
-    }
-
-    private loadTurnstileScript(): void {
-        const win = window as unknown as { turnstile?: Turnstile };
-        if (win.turnstile) {
-            this.renderTurnstile();
-            return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-        script.async = true;
-        script.defer = true;
-        script.id = 'turnstile-script';
-        script.onload = () => this.renderTurnstile();
-        document.head.appendChild(script);
-    }
-    
-    private renderTurnstile(): void {
-        // Prevent duplicate widgets
-        if (this.turnstileWidgetId) {
-            return;
-        }
-        
-        const win = window as unknown as { turnstile?: Turnstile };
-        const turnstile = win.turnstile;
-        
-        if (!turnstile || !this.turnstileContainer?.nativeElement) {
-            setTimeout(() => this.renderTurnstile(), 100);
-            return;
-        }
-
-        this.turnstileWidgetId = turnstile.render(this.turnstileContainer.nativeElement, {
-            sitekey: this.turnstileSiteKey,
-            callback: (token: string) => {
-                this.turnstileToken = token;
-            },
-            'expired-callback': () => {
-                this.turnstileToken = '';
-            },
-            'error-callback': () => {
-                this.turnstileToken = '';
-            }
-        });
-    }
-
-    private removeTurnstileWidget(): void {
-        if (this.turnstileWidgetId) {
-            const win = window as unknown as { turnstile?: { remove?: (id: string) => void } };
-            if (win.turnstile?.remove) {
-                win.turnstile.remove(this.turnstileWidgetId);
-            }
-            this.turnstileWidgetId = null;
-            this.turnstileToken = '';
-        }
+    onTokenChange(token: string): void {
+        this.turnstileToken.set(token);
     }
     
     onBackdropClick(event: MouseEvent): void {
@@ -285,7 +193,6 @@ export class SignupDialogComponent implements OnDestroy, AfterViewInit {
     }
 
     onClose(): void {
-        this.removeTurnstileWidget();
         this.close.emit();
     }
     
@@ -294,11 +201,7 @@ export class SignupDialogComponent implements OnDestroy, AfterViewInit {
             return;
         }
 
-        if (this.hasTurnstile && !this.turnstileToken) {
-            if (!this.turnstileContainer?.nativeElement) {
-                this.loadTurnstileScript();
-                setTimeout(() => this.renderTurnstile(), 100);
-            }
+        if (this.turnstileSiteKey && !this.turnstileToken()) {
             this.error.set('Bitte bestätige, dass du kein Roboter bist.');
             return;
         }
@@ -310,7 +213,7 @@ export class SignupDialogComponent implements OnDestroy, AfterViewInit {
             name: this.name,
             email: this.email,
             comment: this.comment || undefined,
-            cf_turnstile_token: this.turnstileToken || undefined
+            cf_turnstile_token: this.turnstileToken() || undefined
         };
         
         this.eventService.signup(this.eventId(), request).subscribe({
