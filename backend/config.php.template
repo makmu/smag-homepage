@@ -18,4 +18,6 @@ return [
     'TURNSTILE_ENABLED' => false,
     'TURNSTILE_SITE_KEY' => '',
     'TURNSTILE_SECRET_KEY' => '',
+    'IONOS_MAILING_LIST_ENDPOINT' => 'https://ml.kundenserver.de/cgi-bin/mailinglist.cgi',
+    'IONOS_MAILING_LIST_EMAIL' => 'smag-gruppe@fliederlich.de',
 ];
