@@ -74,7 +74,7 @@ final class NewsletterController
 
         if ($result['success']) {
             if ($action === 'subscribe') {
-                return $this->successResponse($response, ['message' => 'Du hast dich erfolgreich für den Newsletter angemeldet.']);
+                return $this->successResponse($response, ['message' => 'Du hast dich erfolgreich für den Newsletter angemeldet. Bitte bestätige die Anmeldung über den Link in der Bestätigungs-E-Mail, die wir dir gerade gesendet haben.']);
             } else {
                 return $this->successResponse($response, ['message' => 'Du wurdest erfolgreich vom Newsletter abgemeldet.']);
             }

@@ -22,7 +22,7 @@ import { TurnstileComponent } from '../../shared/components/turnstile.component'
                     class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors"
                     (click)="resetForm()"
                 >
-                    Nochmal versuchen
+                    Weitere Adresse anmelden
                 </button>
             } @else {
                 @if (error()) {
