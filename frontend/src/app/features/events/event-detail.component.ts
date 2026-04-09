@@ -1,5 +1,6 @@
 import { Component, input, signal, inject, effect, computed } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { ORANGE_STYLE } from '../../core/constants/theme-colors';
@@ -75,7 +76,7 @@ export interface EventSignup {
               </div>
             </div>
             
-            <div class="border-t border-gray-200 pt-6 prose prose-gray max-w-none" [innerHTML]="event()!.fullDescription"></div>
+            <div class="border-t border-gray-200 pt-6 prose prose-gray max-w-none" [innerHTML]="safeHtml(event()!.fullDescription)"></div>
             
             <div class="mt-8 p-6 bg-blue-50 border border-blue-100 rounded-lg">
               @switch (event()!.signupType) {
@@ -86,9 +87,7 @@ export interface EventSignup {
                   </p>
                 }
                 @case ('instructions') {
-                  <p class="text-gray-700">
-                    {{ event()!.signupInstructions }}
-                  </p>
+                  <div class="text-gray-700" [innerHTML]="safeHtml(event()!.signupInstructions ?? '')"></div>
                 }
                 @case ('open') {
                   <div>
@@ -233,6 +232,7 @@ export interface EventSignup {
 export class EventDetailComponent {
     protected readonly ORANGE_STYLE = ORANGE_STYLE;
     protected readonly authService = inject(AuthService);
+    private readonly sanitizer = inject(DomSanitizer);
     protected showSignupDialog = signal(false);
     protected showEditModal = signal(false);
     protected showSignupDetailModal = signal(false);
@@ -371,5 +371,9 @@ export class EventDetailComponent {
 
     private sanitizeFilename(name: string): string {
         return name.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_').substring(0, 50);
+    }
+
+    protected safeHtml(html: string): SafeHtml {
+        return this.sanitizer.bypassSecurityTrustHtml(html);
     }
 }
