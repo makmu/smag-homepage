@@ -156,7 +156,7 @@ export class EventListComponent {
                 next: (response) => {
                     if (response.data) {
                         console.log('Event updated:', response.data);
-                        this.onModalClose();
+                        this.refreshEvents();
                     } else if (response.error) {
                         console.error('Failed to update event:', response.error);
                     }
@@ -170,12 +170,20 @@ export class EventListComponent {
             next: (response) => {
                 if (response.data) {
                     console.log('Event created:', response.data);
-                    this.showAddModal.set(false);
+                    this.refreshEvents();
                 } else if (response.error) {
                     console.error('Failed to create event:', response.error);
                 }
             },
             error: (err) => console.error('Failed to create event:', err)
         });
+    }
+
+    private refreshEvents(): void {
+        this.eventService.getEvents().subscribe({
+            next: (data) => this.events.set(data),
+            error: (err) => console.error('Failed to refresh events:', err)
+        });
+        this.onModalClose();
     }
 }
