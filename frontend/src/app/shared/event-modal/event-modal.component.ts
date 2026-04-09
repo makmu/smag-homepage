@@ -221,12 +221,16 @@ export interface AddEventRequest {
           @if (form.get('signupType')?.value === 'special') {
             <div class="mb-4">
               <label for="signupInstructions" class="mb-1 block text-sm font-medium text-gray-700">Anmeldungsinformationen *</label>
-              <textarea
+              <angular-tiptap-editor
                 id="signupInstructions"
                 formControlName="signupInstructions"
-                rows="3"
-                class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-              ></textarea>
+                [showToolbar]="true"
+                [showFooter]="false"
+                [showCharacterCount]="false"
+                [showWordCount]="false"
+                [seamless]="false"
+                placeholder="Anmeldungsinformationen eingeben..."
+              ></angular-tiptap-editor>
             </div>
           }
 
@@ -356,8 +360,11 @@ export class EventModalComponent {
     if (this.form.invalid) return false;
 
     const subType = this.form.get('signupType')?.value;
-    if (subType === 'special' && !this.form.get('signupInstructions')?.value) {
-      return false;
+    if (subType === 'special') {
+      const signupInstr = this.form.get('signupInstructions')?.value;
+      if (!signupInstr || signupInstr.trim() === '' || signupInstr === '<p></p>') {
+        return false;
+      }
     }
     if (subType === 'on_site') {
       const deadlineDate = this.form.get('signupDeadlineDate')?.value;
