@@ -290,12 +290,7 @@ export class EventDetailComponent {
             next: (response) => {
                 if (response.data) {
                     console.log('Event updated:', response.data);
-                    this.event.set({
-                        ...evt,
-                        title: response.data.title,
-                        description: response.data.teaser,
-                        fullDescription: response.data.description,
-                    });
+                    this.refreshEvent();
                 } else if (response.error) {
                     console.error('Failed to update event:', response.error);
                 }
