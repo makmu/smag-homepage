@@ -1,8 +1,10 @@
-import { Component, signal, effect, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
-import { PostService, Post } from '../../core/services/post.service';
+import { PostService, Post, AddPostRequest } from '../../core/services/post.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
+import { PostModalComponent } from '../../shared/post-modal/post-modal.component';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
 
 interface Pagination {
@@ -15,10 +17,20 @@ interface Pagination {
 @Component({
     selector: 'app-gallery',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [NgOptimizedImage, SmagLoaderComponent],
+    imports: [NgOptimizedImage, SmagLoaderComponent, PostModalComponent],
     template: `
     <div class="mt-6 rounded-lg bg-white px-6 py-6 shadow-md">
-      <h1 class="text-3xl font-bold mb-6">Galerie</h1>
+      <div class="mb-6 flex items-center justify-between">
+        <h1 class="text-3xl font-bold">Galerie</h1>
+        @if (authService.isEditor()) {
+          <button
+            (click)="showModal.set(true)"
+            class="rounded bg-pink-500 px-4 py-2 text-white transition-colors hover:bg-pink-600"
+          >
+            + Neuer Beitrag
+          </button>
+        }
+      </div>
 
       @if (loading()) {
         <div class="flex justify-center py-12">
@@ -64,10 +76,18 @@ interface Pagination {
         }
       }
     </div>
+
+    @if (showModal()) {
+      <app-post-modal
+        (close)="showModal.set(false)"
+        (saved)="onPostSaved($event)"
+      />
+    }
   `
 })
-export class GalleryComponent {
+export class GalleryComponent implements OnInit {
     protected readonly parseToDisplayParts = parseToDisplayParts;
+    protected readonly authService = inject(AuthService);
 
     private readonly postService = inject(PostService);
 
@@ -75,25 +95,10 @@ export class GalleryComponent {
     loading = signal(true);
     error = signal<string | null>(null);
     pagination = signal<Pagination | null>(null);
+    showModal = signal(false);
 
-    constructor() {
-        effect(() => {
-            this.loading.set(true);
-            this.error.set(null);
-
-            this.postService.getPosts().subscribe({
-                next: (response) => {
-                    this.posts.set(response.posts);
-                    this.pagination.set(response.pagination);
-                    this.loading.set(false);
-                },
-                error: (err) => {
-                    console.error('Failed to load posts:', err);
-                    this.error.set('Fehler beim Laden der Galerie.');
-                    this.loading.set(false);
-                }
-            });
-        });
+    ngOnInit(): void {
+        this.loadPage(1);
     }
 
     formatDate(dateStr: string): string {
@@ -116,6 +121,18 @@ export class GalleryComponent {
                 console.error('Failed to load posts:', err);
                 this.error.set('Fehler beim Laden der Galerie.');
                 this.loading.set(false);
+            }
+        });
+    }
+
+    onPostSaved(request: AddPostRequest): void {
+        this.postService.createPost(request).subscribe({
+            next: () => {
+                this.showModal.set(false);
+                this.loadPage(1);
+            },
+            error: () => {
+                this.error.set('Fehler beim Speichern.');
             }
         });
     }

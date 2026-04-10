@@ -11,7 +11,7 @@ use Psr\Http\Message\ServerRequestInterface;
 
 final class PostController
 {
-    private const REQUIRED_FIELDS = ['thumbnail_url', 'title', 'caption', 'date'];
+    private const REQUIRED_FIELDS = ['title', 'caption', 'date'];
 
     private function getDb(): PDO
     {
@@ -73,6 +73,7 @@ final class PostController
             return $this->errorResponse($response, 400, $validationError);
         }
 
+        $thumbnailUrl = $data['thumbnail_url'] ?? '/media/' . (int) $data['thumbnail_id'];
         $now = (new \DateTime())->format(\DateTime::ATOM);
 
         $stmt = $this->getDb()->prepare(
@@ -81,7 +82,7 @@ final class PostController
         );
 
         $stmt->execute([
-            'thumbnail_url' => $data['thumbnail_url'],
+            'thumbnail_url' => $thumbnailUrl,
             'title' => $data['title'],
             'caption' => $data['caption'],
             'date' => $data['date'],
@@ -154,6 +155,12 @@ final class PostController
 
     private function validatePostData(array $data): ?string
     {
+        $hasThumbnail = !empty($data['thumbnail_url']) || !empty($data['thumbnail_id']);
+
+        if (!$hasThumbnail) {
+            return 'Missing required field: thumbnail_url or thumbnail_id';
+        }
+
         $missingFields = [];
         foreach (self::REQUIRED_FIELDS as $field) {
             if (empty($data[$field])) {

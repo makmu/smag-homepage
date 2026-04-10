@@ -43,16 +43,21 @@ export interface PostApiFullItem extends PostApiItem {
 }
 
 export interface AddPostRequest {
-    thumbnail_url: string;
+    thumbnail_id: number;
     title: string;
     caption: string;
     date: string;
 }
 
 function mapApiToPost(item: PostApiItem): Post {
+    const thumbUrl = item.thumbnail_url;
+    const fullUrl = thumbUrl.startsWith('http')
+        ? thumbUrl
+        : environment.apiUrl + thumbUrl;
+
     return {
         id: item.id,
-        thumbnailUrl: item.thumbnail_url,
+        thumbnailUrl: fullUrl,
         title: item.title,
         caption: item.caption,
         date: item.date,

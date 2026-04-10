@@ -118,6 +118,15 @@ final class Database
         ');
 
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_posts_date ON posts(date)');
+
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS media (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT NOT NULL,
+                mime_type TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        ');
     }
 
     public static function resetConnection(): void
