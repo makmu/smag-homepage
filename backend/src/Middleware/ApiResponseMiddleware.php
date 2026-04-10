@@ -14,7 +14,9 @@ final class ApiResponseMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $response = $handler->handle($request);
-        $response = $response->withHeader('Content-Type', 'application/json');
+        if (!$response->hasHeader('Content-Type')) {
+            $response = $response->withHeader('Content-Type', 'application/json');
+        }
         return $response;
     }
 }
