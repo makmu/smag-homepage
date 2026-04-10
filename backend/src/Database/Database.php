@@ -104,6 +104,20 @@ final class Database
 
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_tokens_user_id ON tokens(user_id)');
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_tokens_expires ON tokens(expires_at)');
+
+        $pdo->exec('
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                thumbnail_url TEXT NOT NULL,
+                title TEXT NOT NULL,
+                caption TEXT NOT NULL,
+                date TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        ');
+
+        $pdo->exec('CREATE INDEX IF NOT EXISTS idx_posts_date ON posts(date)');
     }
 
     public static function resetConnection(): void
