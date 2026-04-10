@@ -43,7 +43,7 @@ export interface PostApiFullItem extends PostApiItem {
 }
 
 export interface AddPostRequest {
-    thumbnail_url: string;
+    thumbnail_id: number;
     title: string;
     caption: string;
     date: string;

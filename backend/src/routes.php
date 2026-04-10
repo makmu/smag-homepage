@@ -6,6 +6,7 @@ use App\Controllers\EventController;
 use App\Controllers\AuthController;
 use App\Controllers\NewsletterController;
 use App\Controllers\PostController;
+use App\Controllers\MediaController;
 use App\Services\TokenService;
 use App\Services\UserService;
 use App\Middleware\TokenAuthenticationMiddleware;
@@ -41,4 +42,9 @@ return function (App $app): void {
     $app->get('/api/v1/posts', [$postController, 'getPosts']);
     $app->post('/api/v1/posts', [$postController, 'createPost'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->put('/api/v1/posts/{id}', [$postController, 'updatePost'])->add(new TokenAuthenticationMiddleware($tokenService));
+
+    $mediaController = new MediaController();
+
+    $app->post('/api/v1/media', [$mediaController, 'upload'])->add(new TokenAuthenticationMiddleware($tokenService));
+    $app->get('/api/v1/media/{id}', [$mediaController, 'serve']);
 };
