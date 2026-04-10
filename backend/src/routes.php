@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\EventController;
 use App\Controllers\AuthController;
 use App\Controllers\NewsletterController;
+use App\Controllers\PostController;
 use App\Services\TokenService;
 use App\Services\UserService;
 use App\Middleware\TokenAuthenticationMiddleware;
@@ -34,4 +35,10 @@ return function (App $app): void {
     $newsletterController = new NewsletterController();
     $app->post('/api/v1/newsletter/subscribe', [$newsletterController, 'subscribe']);
     $app->post('/api/v1/newsletter/unsubscribe', [$newsletterController, 'unsubscribe']);
+
+    $postController = new PostController();
+
+    $app->get('/api/v1/posts', [$postController, 'getPosts']);
+    $app->post('/api/v1/posts', [$postController, 'createPost'])->add(new TokenAuthenticationMiddleware($tokenService));
+    $app->put('/api/v1/posts/{id}', [$postController, 'updatePost'])->add(new TokenAuthenticationMiddleware($tokenService));
 };
