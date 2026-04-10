@@ -73,7 +73,7 @@ final class PostController
             return $this->errorResponse($response, 400, $validationError);
         }
 
-        $thumbnailUrl = $data['thumbnail_url'] ?? '/api/v1/media/' . $data['thumbnail_id'];
+        $thumbnailUrl = $data['thumbnail_url'] ?? '/api/v1/media/' . (int) $data['thumbnail_id'];
         $now = (new \DateTime())->format(\DateTime::ATOM);
 
         $stmt = $this->getDb()->prepare(
