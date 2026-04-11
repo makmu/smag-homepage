@@ -1,5 +1,6 @@
-import { Component, input, signal, inject, effect } from '@angular/core';
+import { Component, input, signal, inject, effect, DestroyRef } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
@@ -24,7 +25,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
           <smag-loader [size]="48" />
         </div>
       } @else if (post()) {
-        <div class="bg-white md:bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-4xl md:mt-5 md:pt-4">
+        <div class="bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-4xl md:mt-5 md:pt-4">
           <div class="gallery-viewport relative w-full"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
@@ -85,6 +86,7 @@ export class PostDetailComponent {
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly router = inject(Router);
+    private readonly destroyRef = inject(DestroyRef);
 
     id = input<number>();
     post = signal<ReturnType<typeof this.postService.getPost> extends import("rxjs").Observable<infer T> ? T : never | null>(null);
@@ -98,7 +100,9 @@ export class PostDetailComponent {
             const postId = Number(this.id());
             if (postId) {
                 this.loading.set(true);
-                this.postService.getPost(postId).subscribe({
+                this.postService.getPost(postId).pipe(
+                    takeUntilDestroyed(this.destroyRef)
+                ).subscribe({
                     next: (data) => {
                         this.post.set(data);
                         this.loading.set(false);
