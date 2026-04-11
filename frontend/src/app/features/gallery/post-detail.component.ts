@@ -24,7 +24,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
           <smag-loader [size]="48" />
         </div>
       } @else if (post()) {
-        <div class="bg-white rounded-lg shadow-md p-6 md:p-8">
+        <div class="bg-white rounded-lg shadow-md p-0 md:p-6">
           <div class="gallery-viewport relative inline-block w-full"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
@@ -34,7 +34,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               [alt]="post()!.title"
               width="800"
               height="500"
-              class="w-full h-auto max-h-[500px] object-contain rounded"
+              class="w-full h-auto max-h-[500px] object-contain rounded-none md:rounded"
             />
             @if (post()?.prevPostId || post()?.nextPostId) {
               <div class="gallery-nav-overlay absolute inset-0 pointer-events-none">
