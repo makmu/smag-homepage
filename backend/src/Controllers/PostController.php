@@ -18,6 +18,40 @@ final class PostController
         return Database::getConnection();
     }
 
+    public function getPost(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = (int) $args['id'];
+
+        $stmt = $this->getDb()->prepare('
+            SELECT 
+                id, thumbnail_url, title, caption, date, created_at, updated_at,
+                LAG(id) OVER (ORDER BY date DESC, id DESC) as prev_post_id,
+                LEAD(id) OVER (ORDER BY date DESC, id DESC) as next_post_id
+            FROM posts
+            WHERE id = :id
+        ');
+        $stmt->execute(['id' => $id]);
+        $post = $stmt->fetch();
+
+        if ($post === false) {
+            return $this->errorResponse($response, 404, 'Post not found');
+        }
+
+        $data = [
+            'id' => (int) $post['id'],
+            'thumbnail_url' => $post['thumbnail_url'],
+            'title' => $post['title'],
+            'caption' => $post['caption'],
+            'date' => $post['date'],
+            'created_at' => $post['created_at'],
+            'updated_at' => $post['updated_at'],
+            'prev_post_id' => $post['prev_post_id'] ? (int) $post['prev_post_id'] : null,
+            'next_post_id' => $post['next_post_id'] ? (int) $post['next_post_id'] : null,
+        ];
+
+        return $this->successResponse($response, $data);
+    }
+
     public function getPosts(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $queryParams = $request->getQueryParams();

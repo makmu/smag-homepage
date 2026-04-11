@@ -40,6 +40,7 @@ return function (App $app): void {
     $postController = new PostController();
 
     $app->get('/api/v1/posts', [$postController, 'getPosts']);
+    $app->get('/api/v1/posts/{id}', [$postController, 'getPost']);
     $app->post('/api/v1/posts', [$postController, 'createPost'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->put('/api/v1/posts/{id}', [$postController, 'updatePost'])->add(new TokenAuthenticationMiddleware($tokenService));
 

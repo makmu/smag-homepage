@@ -27,6 +27,11 @@ export const routes: Routes = [
       import('./features/gallery/gallery.component').then((m) => m.GalleryComponent),
   },
   {
+    path: 'gallery/:id',
+    loadComponent: () =>
+      import('./features/gallery/post-detail.component').then((m) => m.PostDetailComponent),
+  },
+  {
     path: 'team',
     loadComponent: () =>
       import('./features/team/team.component').then((m) => m.TeamComponent),
