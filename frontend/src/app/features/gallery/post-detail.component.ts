@@ -24,8 +24,8 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
           <smag-loader [size]="48" />
         </div>
       } @else if (post()) {
-        <div class="bg-white rounded-lg shadow-md p-0 md:p-6">
-          <div class="gallery-viewport relative inline-block w-full"
+        <div class="bg-white shadow-md">
+          <div class="gallery-viewport relative w-[100vw] -ml-[calc(50vw-50%)]"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
                (touchend)="onTouchEnd($event)">
@@ -34,7 +34,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               [alt]="post()!.title"
               width="800"
               height="500"
-              class="w-full h-auto max-h-[500px] object-contain rounded-none md:rounded"
+              class="w-full h-auto max-h-[500px] object-contain"
             />
             @if (post()?.prevPostId || post()?.nextPostId) {
               <div class="gallery-nav-overlay absolute inset-0 pointer-events-none">
@@ -61,9 +61,11 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               </div>
             }
           </div>
-          <h1 class="text-3xl font-bold mt-6 mb-2">{{ post()!.title }}</h1>
-          <p class="text-sm text-gray-500 mb-4">{{ formatDate(post()!.date) }}</p>
-          <div class="prose prose-gray max-w-none" [innerHTML]="safeHtml(post()!.caption)"></div>
+          <div class="p-4 md:p-6">
+            <h1 class="text-3xl font-bold mb-2">{{ post()!.title }}</h1>
+            <p class="text-sm text-gray-500 mb-4">{{ formatDate(post()!.date) }}</p>
+            <div class="prose prose-gray max-w-none" [innerHTML]="safeHtml(post()!.caption)"></div>
+          </div>
         </div>
       } @else {
         <div class="p-6 rounded-lg bg-red-50 text-center text-gray-600">
