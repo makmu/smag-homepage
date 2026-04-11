@@ -23,11 +23,13 @@ final class PostController
         $id = (int) $args['id'];
 
         $stmt = $this->getDb()->prepare('
-            SELECT 
-                id, thumbnail_url, title, caption, date, created_at, updated_at,
-                LAG(id) OVER (ORDER BY date DESC, id DESC) as prev_post_id,
-                LEAD(id) OVER (ORDER BY date DESC, id DESC) as next_post_id
-            FROM posts
+            SELECT * FROM (
+                SELECT 
+                    id, thumbnail_url, title, caption, date, created_at, updated_at,
+                    LAG(id) OVER (ORDER BY date DESC, id DESC) as prev_post_id,
+                    LEAD(id) OVER (ORDER BY date DESC, id DESC) as next_post_id
+                FROM posts
+            ) AS posts_with_nav
             WHERE id = :id
         ');
         $stmt->execute(['id' => $id]);
