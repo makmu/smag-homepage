@@ -61,10 +61,10 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               </div>
             }
           </div>
-          <div class="p-4 md:p-6 border-t border-gray-100">
-            <h1 class="text-3xl font-bold mb-2">{{ post()!.title }}</h1>
-            <p class="text-sm text-gray-500 mb-4">{{ formatDate(post()!.date) }}</p>
-            <div class="prose prose-gray max-w-none mb-6" [innerHTML]="safeHtml(post()!.caption)"></div>
+          <div class="p-5 md:p-6 border-t border-gray-100">
+            <h1 class="text-2xl md:text-3xl font-bold mb-1 md:mb-2">{{ post()!.title }}</h1>
+            <p class="text-xs md:text-sm text-gray-400 mb-4 md:mb-4">{{ formatDate(post()!.date) }}</p>
+            <div class="prose prose-gray max-w-none mb-4 md:mb-6" [innerHTML]="safeHtml(post()!.caption)"></div>
           </div>
         </div>
       } @else {
