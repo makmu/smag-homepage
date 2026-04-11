@@ -167,11 +167,21 @@ ssh "$DEPLOY_HOST" "set -e
     rm \$DEPLOYMENTS_DIR/$ZIP_NAME
     if [ -L \$HOME/smag/$LIVE_SYMLINK ]; then
         CURRENT_LIVE=\$(readlink -f \$HOME/smag/$LIVE_SYMLINK)
-        if [ -f "\$CURRENT_LIVE/../data/database.sqlite" ]; then
-            cp "\$CURRENT_LIVE/../data/database.sqlite" data/
-        fi
-        if [ -f "\$CURRENT_LIVE/../backend/config.php" ]; then
-            cp "\$CURRENT_LIVE/../backend/config.php" backend/
+        OLD_CONFIG="\$CURRENT_LIVE/backend/config.php"
+        if [ -f "\$OLD_CONFIG" ]; then
+            cp "\$OLD_CONFIG" backend/
+            DB_PATH=\$(php -r "echo require '\$OLD_CONFIG'['DB_PATH'];")
+            UPLOAD_PATH=\$(php -r "echo require '\$OLD_CONFIG'['UPLOAD_PATH'];")
+            if [ -n "\$DB_PATH" ] && [ -f "\$DB_PATH" ]; then
+                NEW_DB_PATH=\$(php -r "echo require '\$NEW_DIR/backend/config.php'['DB_PATH'];")
+                mkdir -p "\$(dirname "\$NEW_DB_PATH")"
+                cp "\$DB_PATH" "\$NEW_DB_PATH"
+            fi
+            if [ -n "\$UPLOAD_PATH" ] && [ -d "\$UPLOAD_PATH" ]; then
+                NEW_UPLOAD_PATH=\$(php -r "echo require '\$NEW_DIR/backend/config.php'['UPLOAD_PATH'];")
+                mkdir -p "\$(dirname "\$NEW_UPLOAD_PATH")"
+                cp -r "\$UPLOAD_PATH" "\$(dirname "\$NEW_UPLOAD_PATH")/"
+            fi
         fi
     fi
     if [ ! -f backend/config.php ] && [ -f backend/config.php.template ]; then
