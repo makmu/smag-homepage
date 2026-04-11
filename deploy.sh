@@ -170,18 +170,31 @@ ssh "$DEPLOY_HOST" "set -e
         OLD_CONFIG="\$CURRENT_LIVE/backend/config.php"
         if [ -f "\$OLD_CONFIG" ]; then
             cp "\$OLD_CONFIG" backend/
-            DB_PATH=\$(php -r '\$c=require "\$OLD_CONFIG";echo \$c["DB_PATH"];')
-            UPLOAD_PATH=\$(php -r '\$c=require "\$OLD_CONFIG";echo \$c["UPLOAD_PATH"];')
+            php -r '
+                $c=require "$CURRENT_LIVE/backend/config.php";
+                echo "DB_PATH=".$c["DB_PATH"]."\n";
+                echo "UPLOAD_PATH=".$c["UPLOAD_PATH"]."\n";
+            ' > /tmp/paths.txt
+            eval "$(awk -F= '{print $1"=\""$2""}' OFS='=' /tmp/paths.txt)"
             if [ -n "\$DB_PATH" ] && [ -f "\$DB_PATH" ]; then
-                NEW_DB_PATH=\$(php -r '\$c=require "\$NEW_DIR/backend/config.php";echo \$c["DB_PATH"];')
+                php -r '
+                    $c=require "$NEW_DIR/backend/config.php";
+                    echo "NEW_DB_PATH=".$c["DB_PATH"]."\n";
+                ' > /tmp/newpaths.txt
+                eval "$(awk -F= '{print $1"=\""$2""}' OFS='=' /tmp/newpaths.txt)"
                 mkdir -p "\$(dirname "\$NEW_DB_PATH")"
                 cp "\$DB_PATH" "\$NEW_DB_PATH"
             fi
             if [ -n "\$UPLOAD_PATH" ] && [ -d "\$UPLOAD_PATH" ]; then
-                NEW_UPLOAD_PATH=\$(php -r '\$c=require "\$NEW_DIR/backend/config.php";echo \$c["UPLOAD_PATH"];')
+                php -r '
+                    $c=require "$NEW_DIR/backend/config.php";
+                    echo "NEW_UPLOAD_PATH=".$c["UPLOAD_PATH"]."\n";
+                ' > /tmp/newpaths.txt
+                eval "$(awk -F= '{print $1"=\""$2""}' OFS='=' /tmp/newpaths.txt)"
                 mkdir -p "\$(dirname "\$NEW_UPLOAD_PATH")"
                 cp -r "\$UPLOAD_PATH" "\$(dirname "\$NEW_UPLOAD_PATH")/"
             fi
+            rm -f /tmp/paths.txt /tmp/newpaths.txt
         fi
     fi
     if [ ! -f backend/config.php ] && [ -f backend/config.php.template ]; then
