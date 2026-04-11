@@ -13,8 +13,8 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RouterLink, NgOptimizedImage, SmagLoaderComponent],
     template: `
-    <div class="mt-6 px-0 md:px-6">
-      <div class="mb-6 px-4 md:px-0 md:mx-auto md:max-w-4xl">
+    <div class="mt-6">
+      <div class="mb-6">
         <a routerLink="/gallery" class="inline-flex items-center text-pink-600 hover:text-pink-700 font-medium">
           <span class="mr-2">←</span> Zurück zur Galerie
         </a>
@@ -25,7 +25,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
           <smag-loader [size]="48" />
         </div>
       } @else if (post()) {
-        <div class="bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-4xl md:mt-5 md:pt-4">
+        <div class="bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-[1100px] md:mt-5 md:pt-4">
           <div class="gallery-viewport relative w-full"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
@@ -62,7 +62,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               </div>
             }
           </div>
-          <div class="p-5 md:p-6 md:rounded-b-lg">
+          <div class="md:rounded-b-lg">
             <h1 class="text-2xl md:text-3xl font-bold mb-1 md:mb-2">{{ post()!.title }}</h1>
             <p class="text-xs md:text-sm text-gray-400 mb-4 md:mb-4">{{ formatDate(post()!.date) }}</p>
             <div class="prose prose-gray max-w-none mb-4 md:mb-6" [innerHTML]="safeHtml(post()!.caption)"></div>
