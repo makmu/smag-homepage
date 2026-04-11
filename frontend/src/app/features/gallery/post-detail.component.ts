@@ -38,17 +38,21 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
                 @if (post()?.prevPostId) {
                   <a [routerLink]="['/gallery', post()!.prevPostId]" 
                      class="nav-prev absolute left-0 top-0 bottom-0 w-[15%] flex items-center justify-start pl-4 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
+                    <div class="rounded-full bg-black/40 p-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </div>
                   </a>
                 }
                 @if (post()?.nextPostId) {
                   <a [routerLink]="['/gallery', post()!.nextPostId]" 
                      class="nav-next absolute right-0 top-0 bottom-0 w-[15%] flex items-center justify-end pr-4 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+                    <div class="rounded-full bg-black/40 p-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </a>
                 }
               </div>
