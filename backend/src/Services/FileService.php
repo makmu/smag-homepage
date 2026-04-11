@@ -12,9 +12,15 @@ final class FileService
     private const ALLOWED_MIMES = ['image/jpeg', 'image/png'];
     private const MAX_SIZE = 1048576;
 
+    private static function getConfig(): array
+    {
+        return require __DIR__ . '/../../config.php';
+    }
+
     public function getUploadPath(): string
     {
-        return dirname(__DIR__, 3) . '/data/uploads';
+        $config = self::getConfig();
+        return $config['UPLOAD_PATH'];
     }
 
     public function ensureUploadDir(): void
