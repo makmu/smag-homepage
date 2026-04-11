@@ -40,6 +40,8 @@ export interface PostApiResponseSingle {
 export interface PostApiFullItem extends PostApiItem {
     created_at: string;
     updated_at: string;
+    prev_post_id: number | null;
+    next_post_id: number | null;
 }
 
 export interface AddPostRequest {
@@ -82,11 +84,27 @@ export class PostService {
         );
     }
 
-    getPost(id: number): Observable<Post | null> {
+    getPost(id: number): Observable<{ id: number; thumbnailUrl: string; title: string; caption: string; date: string; createdAt: string; updatedAt: string; prevPostId: number | null; nextPostId: number | null } | null> {
         return this.http.get<{ data: PostApiFullItem | null; error: string | null }>(`${this.apiUrl}/posts/${id}`).pipe(
             map(response => {
                 if (response.data) {
-                    return mapApiToPost(response.data);
+                    const p = response.data;
+                    const thumbUrl = p.thumbnail_url;
+                    const fullUrl = thumbUrl.startsWith('http')
+                        ? thumbUrl
+                        : environment.apiUrl + thumbUrl;
+
+                    return {
+                        id: p.id,
+                        thumbnailUrl: fullUrl,
+                        title: p.title,
+                        caption: p.caption,
+                        date: p.date,
+                        createdAt: p.created_at,
+                        updatedAt: p.updated_at,
+                        prevPostId: p.prev_post_id,
+                        nextPostId: p.next_post_id,
+                    };
                 }
                 return null;
             })

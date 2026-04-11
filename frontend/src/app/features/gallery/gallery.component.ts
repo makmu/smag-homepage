@@ -1,6 +1,7 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { PostService, Post, AddPostRequest } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
@@ -17,7 +18,7 @@ interface Pagination {
 @Component({
     selector: 'app-gallery',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [NgOptimizedImage, SmagLoaderComponent, PostModalComponent],
+    imports: [NgOptimizedImage, SmagLoaderComponent, PostModalComponent, RouterLink],
     template: `
     <div class="mt-6 rounded-lg bg-white px-6 py-6 shadow-md">
       <div class="mb-6 flex items-center justify-between">
@@ -43,7 +44,7 @@ interface Pagination {
       } @else {
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           @for (post of posts(); track post.id) {
-            <div class="rounded-lg bg-gray-100 p-4 shadow-sm">
+            <a [routerLink]="['/gallery', post.id]" class="block rounded-lg bg-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
               <img 
                 [ngSrc]="post.thumbnailUrl" 
                 [alt]="post.title"
@@ -54,7 +55,7 @@ interface Pagination {
               <h3 class="mb-2 text-xl font-bold">{{ post.title }}</h3>
               <p class="text-sm text-gray-600">{{ post.caption }}</p>
               <p class="text-xs text-gray-400 mt-2">{{ formatDate(post.date) }}</p>
-            </div>
+            </a>
           }
         </div>
 
