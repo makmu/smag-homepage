@@ -27,6 +27,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         <div class="bg-white rounded-lg shadow-md p-6 md:p-8">
           <div class="gallery-viewport relative inline-block w-full"
                (touchstart)="onTouchStart($event)"
+               (touchmove)="onTouchMove($event)"
                (touchend)="onTouchEnd($event)">
             <img 
               [ngSrc]="post()!.thumbnailUrl" 
@@ -87,6 +88,8 @@ export class PostDetailComponent {
     post = signal<ReturnType<typeof this.postService.getPost> extends import("rxjs").Observable<infer T> ? T : never | null>(null);
     loading = signal(true);
     touchStartX = signal<number | null>(null);
+    touchStartY = signal<number | null>(null);
+    isSwipeCancelled = signal(false);
 
     constructor() {
         effect(() => {
@@ -119,14 +122,39 @@ export class PostDetailComponent {
     }
 
     onTouchStart(event: TouchEvent): void {
-        this.touchStartX.set(event.touches[0].clientX);
+        const touch = event.touches[0];
+        if (!touch) return;
+        this.touchStartX.set(touch.clientX);
+        this.touchStartY.set(touch.clientY);
+        this.isSwipeCancelled.set(false);
+    }
+
+    onTouchMove(event: TouchEvent): void {
+        const touch = event.touches[0];
+        if (!touch || this.isSwipeCancelled()) return;
+
+        const startY = this.touchStartY();
+        if (startY === null) return;
+
+        if (Math.abs(touch.clientY - startY) > 10) {
+            this.isSwipeCancelled.set(true);
+        }
     }
 
     onTouchEnd(event: TouchEvent): void {
+        if (this.isSwipeCancelled()) {
+            this.touchStartX.set(null);
+            this.touchStartY.set(null);
+            return;
+        }
+
         const startX = this.touchStartX();
         if (startX === null) return;
 
-        const endX = event.changedTouches[0].clientX;
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+
+        const endX = touch.clientX;
         const delta = endX - startX;
         const currentPost = this.post();
 
@@ -137,5 +165,6 @@ export class PostDetailComponent {
         }
 
         this.touchStartX.set(null);
+        this.touchStartY.set(null);
     }
 }
