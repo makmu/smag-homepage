@@ -25,7 +25,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         </div>
       } @else if (post()) {
         <div class="bg-white md:bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-4xl">
-          <div class="gallery-viewport relative w-[100vw] -ml-[calc(50vw-50%)]"
+          <div class="gallery-viewport relative w-full md:w-full"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
                (touchend)="onTouchEnd($event)">
@@ -34,15 +34,15 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               [alt]="post()!.title"
               width="800"
               height="500"
-              class="w-full h-auto max-h-[500px] object-contain"
+              class="w-full h-auto max-h-[500px] object-contain md:rounded-t-lg"
             />
             @if (post()?.prevPostId || post()?.nextPostId) {
               <div class="gallery-nav-overlay absolute inset-0 pointer-events-none">
                 @if (post()?.prevPostId) {
                   <a [routerLink]="['/gallery', post()!.prevPostId]" 
-                     class="nav-prev absolute left-0 top-0 bottom-0 w-[15%] flex items-center justify-start pl-4 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
-                    <div class="rounded-full bg-black/40 p-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                     class="nav-prev absolute left-0 top-0 bottom-0 w-[15%] md:w-[10%] flex items-center justify-start pl-4 md:pl-3 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                    <div class="rounded-full bg-black/40 p-2 md:p-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                       </svg>
                     </div>
@@ -50,9 +50,9 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
                 }
                 @if (post()?.nextPostId) {
                   <a [routerLink]="['/gallery', post()!.nextPostId]" 
-                     class="nav-next absolute right-0 top-0 bottom-0 w-[15%] flex items-center justify-end pr-4 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
-                    <div class="rounded-full bg-black/40 p-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                     class="nav-next absolute right-0 top-0 bottom-0 w-[15%] md:w-[10%] flex items-center justify-end pr-4 md:pr-3 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                    <div class="rounded-full bg-black/40 p-2 md:p-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
