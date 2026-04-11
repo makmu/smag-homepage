@@ -24,7 +24,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
           <smag-loader [size]="48" />
         </div>
       } @else if (post()) {
-        <div class="bg-white shadow-md">
+        <div class="bg-white md:bg-white md:shadow-md md:rounded-lg">
           <div class="gallery-viewport relative w-[100vw] -ml-[calc(50vw-50%)]"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
