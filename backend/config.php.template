@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'DB_PATH' => __DIR__ . '/../data/database.sqlite',
+    'DB_PATH' => __DIR__ . '/../../data/database.sqlite',
     'ACCESS_TOKEN_TTL' => 900,
     'REFRESH_TOKEN_TTL' => 2592000,
     'SLOW_MODE_DELAY' => 0,

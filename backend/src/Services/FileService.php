@@ -14,7 +14,7 @@ final class FileService
 
     public function getUploadPath(): string
     {
-        return dirname(__DIR__, 2) . '/data/uploads';
+        return dirname(__DIR__, 3) . '/data/uploads';
     }
 
     public function ensureUploadDir(): void
