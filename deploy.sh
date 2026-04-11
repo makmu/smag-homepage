@@ -122,7 +122,6 @@ cp "$PROJECT_ROOT/deploy/public/api/index.php" "$BUILD_DIR/public/api/"
 
 cp -r "$PROJECT_ROOT/backend/"* "$BUILD_DIR/backend/"
 cp "$PROJECT_ROOT/backend/README.md" "$BUILD_DIR/"
-rm -rf "$BUILD_DIR/backend/data"
 rm -rf "$BUILD_DIR/backend/vendor"
 
 echo "Installing PHP dependencies (production)..."
