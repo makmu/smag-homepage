@@ -12,8 +12,8 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RouterLink, NgOptimizedImage, SmagLoaderComponent],
     template: `
-    <div class="mx-auto mt-6 max-w-4xl">
-      <div class="mb-6">
+    <div class="mt-6">
+      <div class="mb-6 px-4 md:px-0 md:mx-auto md:max-w-4xl">
         <a routerLink="/gallery" class="inline-flex items-center text-pink-600 hover:text-pink-700 font-medium">
           <span class="mr-2">←</span> Zurück zur Galerie
         </a>
@@ -24,7 +24,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
           <smag-loader [size]="48" />
         </div>
       } @else if (post()) {
-        <div class="bg-white md:bg-white md:shadow-md md:rounded-lg">
+        <div class="bg-white md:bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-4xl">
           <div class="gallery-viewport relative w-[100vw] -ml-[calc(50vw-50%)]"
                (touchstart)="onTouchStart($event)"
                (touchmove)="onTouchMove($event)"
