@@ -62,7 +62,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
               </div>
             }
           </div>
-          <div class="md:rounded-b-lg">
+          <div class="py-5 md:py-6 md:rounded-b-lg">
             <h1 class="text-2xl md:text-3xl font-bold mb-1 md:mb-2">{{ post()!.title }}</h1>
             <p class="text-xs md:text-sm text-gray-400 mb-4 md:mb-4">{{ formatDate(post()!.date) }}</p>
             <div class="prose prose-gray max-w-none mb-4 md:mb-6" [innerHTML]="safeHtml(post()!.caption)"></div>
