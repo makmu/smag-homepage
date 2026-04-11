@@ -170,15 +170,15 @@ ssh "$DEPLOY_HOST" "set -e
         OLD_CONFIG="\$CURRENT_LIVE/backend/config.php"
         if [ -f "\$OLD_CONFIG" ]; then
             cp "\$OLD_CONFIG" backend/
-            DB_PATH=\$(php -r "echo require '\$OLD_CONFIG'['DB_PATH'];")
-            UPLOAD_PATH=\$(php -r "echo require '\$OLD_CONFIG'['UPLOAD_PATH'];")
+            DB_PATH=\$(php -r '\$c=require "\$OLD_CONFIG";echo \$c["DB_PATH"];')
+            UPLOAD_PATH=\$(php -r '\$c=require "\$OLD_CONFIG";echo \$c["UPLOAD_PATH"];')
             if [ -n "\$DB_PATH" ] && [ -f "\$DB_PATH" ]; then
-                NEW_DB_PATH=\$(php -r "echo require '\$NEW_DIR/backend/config.php'['DB_PATH'];")
+                NEW_DB_PATH=\$(php -r '\$c=require "\$NEW_DIR/backend/config.php";echo \$c["DB_PATH"];')
                 mkdir -p "\$(dirname "\$NEW_DB_PATH")"
                 cp "\$DB_PATH" "\$NEW_DB_PATH"
             fi
             if [ -n "\$UPLOAD_PATH" ] && [ -d "\$UPLOAD_PATH" ]; then
-                NEW_UPLOAD_PATH=\$(php -r "echo require '\$NEW_DIR/backend/config.php'['UPLOAD_PATH'];")
+                NEW_UPLOAD_PATH=\$(php -r '\$c=require "\$NEW_DIR/backend/config.php";echo \$c["UPLOAD_PATH"];')
                 mkdir -p "\$(dirname "\$NEW_UPLOAD_PATH")"
                 cp -r "\$UPLOAD_PATH" "\$(dirname "\$NEW_UPLOAD_PATH")/"
             fi
