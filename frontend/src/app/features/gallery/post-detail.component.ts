@@ -13,26 +13,10 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
     imports: [RouterLink, NgOptimizedImage, SmagLoaderComponent],
     template: `
     <div class="mx-auto mt-6 max-w-4xl">
-      <div class="mb-6 flex justify-between items-center">
+      <div class="mb-6">
         <a routerLink="/gallery" class="inline-flex items-center text-pink-600 hover:text-pink-700 font-medium">
           <span class="mr-2">←</span> Zurück zur Galerie
         </a>
-        @if (post()?.prevPostId || post()?.nextPostId) {
-          <div class="flex gap-2">
-            @if (post()?.prevPostId) {
-              <a [routerLink]="['/gallery', post()!.prevPostId]" 
-                 class="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">
-                 ← Zurück
-              </a>
-            }
-            @if (post()?.nextPostId) {
-              <a [routerLink]="['/gallery', post()!.nextPostId]" 
-                 class="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">
-                 Weiter →
-              </a>
-            }
-          </div>
-        }
       </div>
 
       @if (loading()) {
@@ -41,14 +25,36 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         </div>
       } @else if (post()) {
         <div class="bg-white rounded-lg shadow-md p-6 md:p-8">
-          <img 
-            [ngSrc]="post()!.thumbnailUrl" 
-            [alt]="post()!.title"
-            width="800"
-            height="500"
-            class="w-full h-auto max-h-[500px] object-contain rounded mb-6"
-          />
-          <h1 class="text-3xl font-bold mb-2">{{ post()!.title }}</h1>
+          <div class="gallery-viewport relative inline-block w-full">
+            <img 
+              [ngSrc]="post()!.thumbnailUrl" 
+              [alt]="post()!.title"
+              width="800"
+              height="500"
+              class="w-full h-auto max-h-[500px] object-contain rounded"
+            />
+            @if (post()?.prevPostId || post()?.nextPostId) {
+              <div class="gallery-nav-overlay absolute inset-0 pointer-events-none">
+                @if (post()?.prevPostId) {
+                  <a [routerLink]="['/gallery', post()!.prevPostId]" 
+                     class="nav-prev absolute left-0 top-0 bottom-0 w-[15%] flex items-center justify-start pl-4 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </a>
+                }
+                @if (post()?.nextPostId) {
+                  <a [routerLink]="['/gallery', post()!.nextPostId]" 
+                     class="nav-next absolute right-0 top-0 bottom-0 w-[15%] flex items-center justify-end pr-4 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                }
+              </div>
+            }
+          </div>
+          <h1 class="text-3xl font-bold mt-6 mb-2">{{ post()!.title }}</h1>
           <p class="text-sm text-gray-500 mb-4">{{ formatDate(post()!.date) }}</p>
           <div class="prose prose-gray max-w-none" [innerHTML]="safeHtml(post()!.caption)"></div>
         </div>
@@ -58,7 +64,13 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         </div>
       }
     </div>
-  `
+  `,
+    styles: [`
+      .gallery-viewport:hover .gallery-nav-overlay .nav-prev,
+      .gallery-viewport:hover .gallery-nav-overlay .nav-next {
+        opacity: 1;
+      }
+    `]
 })
 export class PostDetailComponent {
     private readonly postService = inject(PostService);
