@@ -1,7 +1,7 @@
 import { Component, input, signal, inject, effect } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
 import { PostService } from '../../core/services/post.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
@@ -25,7 +25,9 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         </div>
       } @else if (post()) {
         <div class="bg-white rounded-lg shadow-md p-6 md:p-8">
-          <div class="gallery-viewport relative inline-block w-full">
+          <div class="gallery-viewport relative inline-block w-full"
+               (touchstart)="onTouchStart($event)"
+               (touchend)="onTouchEnd($event)">
             <img 
               [ngSrc]="post()!.thumbnailUrl" 
               [alt]="post()!.title"
@@ -79,10 +81,12 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
 export class PostDetailComponent {
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
+    private readonly router = inject(Router);
 
     id = input<number>();
     post = signal<ReturnType<typeof this.postService.getPost> extends import("rxjs").Observable<infer T> ? T : never | null>(null);
     loading = signal(true);
+    touchStartX = signal<number | null>(null);
 
     constructor() {
         effect(() => {
@@ -112,5 +116,26 @@ export class PostDetailComponent {
 
     safeHtml(html: string): SafeHtml {
         return this.sanitizer.bypassSecurityTrustHtml(html);
+    }
+
+    onTouchStart(event: TouchEvent): void {
+        this.touchStartX.set(event.touches[0].clientX);
+    }
+
+    onTouchEnd(event: TouchEvent): void {
+        const startX = this.touchStartX();
+        if (startX === null) return;
+
+        const endX = event.changedTouches[0].clientX;
+        const delta = endX - startX;
+        const currentPost = this.post();
+
+        if (delta < -50 && currentPost?.nextPostId) {
+            this.router.navigate(['/gallery', currentPost.nextPostId]);
+        } else if (delta > 50 && currentPost?.prevPostId) {
+            this.router.navigate(['/gallery', currentPost.prevPostId]);
+        }
+
+        this.touchStartX.set(null);
     }
 }
