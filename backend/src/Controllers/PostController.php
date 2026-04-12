@@ -169,6 +169,22 @@ final class PostController
         return $this->successResponse($response, $post);
     }
 
+    public function deletePost(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = (int) $args['id'];
+
+        $post = $this->getPostById($id);
+
+        if ($post === null) {
+            return $this->errorResponse($response, 404, 'Post not found');
+        }
+
+        $stmt = $this->getDb()->prepare('DELETE FROM posts WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+
+        return $this->successResponse($response, ['deleted' => true]);
+    }
+
     private function getPostById(int $id): ?array
     {
         $stmt = $this->getDb()->prepare('SELECT id, thumbnail_url, title, caption, date, created_at, updated_at FROM posts WHERE id = :id');

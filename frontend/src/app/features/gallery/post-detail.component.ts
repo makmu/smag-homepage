@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
-import { PostService, UpdatePostRequest } from '../../core/services/post.service';
+import { PostService } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { PostModalComponent } from '../../shared/post-modal/post-modal.component';
@@ -93,8 +93,8 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
     @if (showEditModal() && post()) {
       <app-post-modal
         [editablePost]="editablePost()"
-        (close)="closeEditModal()"
-        (saved)="onPostSaved($event)"
+        (cancelled)="closeEditModal()"
+        (saved)="onPostSaved()"
       />
     }
   `,
@@ -218,18 +218,9 @@ export class PostDetailComponent {
         this.editablePost.set(null);
     }
 
-    onPostSaved(request: UpdatePostRequest): void {
-        const p = this.post();
-        if (!p) return;
-        this.postService.updatePost(p.id, request).subscribe({
-            next: () => {
-                this.closeEditModal();
-                this.refreshPost();
-            },
-            error: () => {
-                this.closeEditModal();
-            }
-        });
+    onPostSaved(): void {
+        this.closeEditModal();
+        this.refreshPost();
     }
 
     refreshPost(): void {

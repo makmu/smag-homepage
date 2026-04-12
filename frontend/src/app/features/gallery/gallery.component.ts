@@ -2,7 +2,7 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { PostService, Post, AddPostRequest, UpdatePostRequest } from '../../core/services/post.service';
+import { PostService, Post } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { PostModalComponent } from '../../shared/post-modal/post-modal.component';
@@ -96,8 +96,8 @@ interface Pagination {
     @if (showModal()) {
       <app-post-modal
         [editablePost]="editingPost()"
-        (close)="closeModal()"
-        (saved)="onPostSaved($event)"
+        (cancelled)="closeModal()"
+        (saved)="onPostSaved()"
       />
     }
   `
@@ -153,28 +153,8 @@ protected posts = signal<Post[]>([]);
         });
     }
 
-    onPostSaved(request: AddPostRequest | UpdatePostRequest): void {
-        const editing = this.editingPost();
-        if (editing) {
-            this.postService.updatePost(editing.id, request).subscribe({
-                next: () => {
-                    this.closeModal();
-                    this.loadPage(1);
-                },
-                error: () => {
-                    this.error.set('Fehler beim Speichern.');
-                }
-            });
-        } else {
-            this.postService.createPost(request as AddPostRequest).subscribe({
-                next: () => {
-                    this.showModal.set(false);
-                    this.loadPage(1);
-                },
-                error: () => {
-                    this.error.set('Fehler beim Speichern.');
-                }
-            });
-        }
+    onPostSaved(): void {
+        this.closeModal();
+        this.loadPage(1);
     }
 }
