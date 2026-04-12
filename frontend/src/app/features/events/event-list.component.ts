@@ -2,10 +2,9 @@ import { Component, signal, effect, inject, computed } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { RAINBOW_COLORS } from '../../core/constants/theme-colors';
-import { EventService, Event, AddEventRequest } from '../../core/services/event.service';
+import { EventService, Event } from '../../core/services/event.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { EventModalComponent, EditableEvent } from '../../shared/event-modal/event-modal.component';
-import { eventToEditableEvent } from './event-helpers';
+import { EventModalComponent } from '../../shared/event-modal/event-modal.component';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
 
@@ -85,15 +84,11 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
       }
     }
 
-    @if (editingLoading()) {
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <smag-loader [size]="48" />
-      </div>
-    } @else if (showAddModal() || editingEvent() !== null) {
+    @if (showAddModal() || editingEventId() !== null) {
       <app-event-modal 
-        [editableEvent]="editingEvent()" 
-        (close)="onModalClose()" 
-        (saved)="onEventSaved($event)" 
+        [eventId]="editingEventId()" 
+        (cancelled)="onModalClose()" 
+        (saved)="onEventSaved()" 
       />
     }
   `
@@ -108,82 +103,39 @@ export class EventListComponent {
 
     events = signal<Event[]>([]);
     loading = signal(true);
-    editingLoading = signal(false);
     showAddModal = signal(false);
-    editingEvent = signal<EditableEvent | null>(null);
+    editingEventId = signal<number | null>(null);
 
     constructor() {
         effect(() => {
-            this.loading.set(true);
-            this.eventService.getEvents().subscribe({
-                next: (data) => {
-                    this.events.set(data);
-                    this.loading.set(false);
-                },
-                error: (err) => {
-                    console.error('Failed to load events:', err);
-                    this.loading.set(false);
-                }
-            });
+            this.loadEvents();
         });
     }
 
-    openEditModal(event: Event): void {
-        this.editingLoading.set(true);
-        this.eventService.getEvent(event.id).subscribe({
-            next: (fullEvent) => {
-                if (fullEvent) {
-                    this.editingEvent.set(eventToEditableEvent(fullEvent));
-                }
-                this.editingLoading.set(false);
+    protected openEditModal(event: Event): void {
+        this.editingEventId.set(event.id);
+    }
+
+    protected onModalClose(): void {
+        this.showAddModal.set(false);
+        this.editingEventId.set(null);
+    }
+
+    protected onEventSaved(): void {
+        this.onModalClose();
+        this.loadEvents();
+    }
+
+    private loadEvents(): void {
+        this.loading.set(true);
+        this.eventService.getEvents().subscribe({
+            next: (data) => {
+                this.events.set(data);
+                this.loading.set(false);
             },
-            error: (err) => {
-                console.error('Failed to load event for editing:', err);
-                this.editingLoading.set(false);
+            error: () => {
+                this.loading.set(false);
             }
         });
-    }
-
-    onModalClose(): void {
-        this.showAddModal.set(false);
-        this.editingEvent.set(null);
-    }
-
-    onEventSaved(eventData: AddEventRequest): void {
-        const editing = this.editingEvent();
-        if (editing !== null) {
-            this.eventService.updateEvent(editing.id, eventData).subscribe({
-                next: (response) => {
-                    if (response.data) {
-                        console.log('Event updated:', response.data);
-                        this.refreshEvents();
-                    } else if (response.error) {
-                        console.error('Failed to update event:', response.error);
-                    }
-                },
-                error: (err) => console.error('Failed to update event:', err)
-            });
-            return;
-        }
-
-        this.eventService.createEvent(eventData).subscribe({
-            next: (response) => {
-                if (response.data) {
-                    console.log('Event created:', response.data);
-                    this.refreshEvents();
-                } else if (response.error) {
-                    console.error('Failed to create event:', response.error);
-                }
-            },
-            error: (err) => console.error('Failed to create event:', err)
-        });
-    }
-
-    private refreshEvents(): void {
-        this.eventService.getEvents().subscribe({
-            next: (data) => this.events.set(data),
-            error: (err) => console.error('Failed to refresh events:', err)
-        });
-        this.onModalClose();
     }
 }
