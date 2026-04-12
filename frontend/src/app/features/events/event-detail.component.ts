@@ -302,6 +302,7 @@ export class EventDetailComponent {
     }
 
     protected refreshEvent(): void {
+        this.loading.set(true);
         const eventId = Number(this.id());
         if (eventId) {
             this.eventService.getEvent(eventId).subscribe({

@@ -132,6 +132,10 @@ export class EventListComponent {
 
     protected onEventSaved(): void {
         this.onModalClose();
+        this.refreshEvents();
+    }
+
+    private refreshEvents(): void {
         this.loading.set(true);
         this.eventService.getEvents().subscribe({
             next: (data) => {

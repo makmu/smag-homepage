@@ -127,7 +127,7 @@ export class PostDetailComponent implements OnDestroy {
         effect(() => {
             const postId = Number(this.id());
             if (postId) {
-                this.loadPost(true);
+                this.loadPost();
             }
         });
     }
@@ -137,10 +137,8 @@ export class PostDetailComponent implements OnDestroy {
         this.destroy$.complete();
     }
 
-    private loadPost(setLoading: boolean): void {
-        if (setLoading) {
-            this.loading.set(true);
-        }
+    private loadPost(): void {
+        this.loading.set(true);
         const postId = Number(this.id());
         if (postId) {
             this.postService.getPost(postId).pipe(takeUntil(this.destroy$)).subscribe({
@@ -234,10 +232,10 @@ export class PostDetailComponent implements OnDestroy {
 
     onPostSaved(): void {
         this.closeEditModal();
-        this.loadPost(true);
+        this.loadPost();
     }
 
     refreshPost(): void {
-        this.loadPost(true);
+        this.loadPost();
     }
 }
