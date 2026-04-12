@@ -131,14 +131,17 @@ export class EventListComponent {
     }
 
     protected onEventSaved(): void {
-        this.refreshEvents();
-    }
-
-    private refreshEvents(): void {
-        this.eventService.getEvents().subscribe({
-            next: (data) => this.events.set(data),
-            error: (err) => console.error('Failed to refresh events:', err)
-        });
         this.onModalClose();
+        this.loading.set(true);
+        this.eventService.getEvents().subscribe({
+            next: (data) => {
+                this.events.set(data);
+                this.loading.set(false);
+            },
+            error: (err) => {
+                console.error('Failed to refresh events:', err);
+                this.loading.set(false);
+            }
+        });
     }
 }

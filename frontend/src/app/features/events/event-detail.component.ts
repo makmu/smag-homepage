@@ -283,6 +283,7 @@ export class EventDetailComponent {
 
     protected onEventSaved(): void {
         this.showEditModal.set(false);
+        this.loading.set(true);
         this.refreshEvent();
     }
     
@@ -304,8 +305,13 @@ export class EventDetailComponent {
         const eventId = Number(this.id());
         if (eventId) {
             this.eventService.getEvent(eventId).subscribe({
-                next: (data) => this.event.set(data),
-                error: () => {}
+                next: (data) => {
+                    this.event.set(data);
+                    this.loading.set(false);
+                },
+                error: () => {
+                    this.loading.set(false);
+                }
             });
         }
     }
