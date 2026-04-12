@@ -220,6 +220,7 @@ export class PostDetailComponent {
 
     onPostSaved(): void {
         this.closeEditModal();
+        this.loading.set(true);
         this.refreshPost();
     }
 
@@ -227,8 +228,13 @@ export class PostDetailComponent {
         const postId = Number(this.id());
         if (postId) {
             this.postService.getPost(postId).subscribe({
-                next: (data) => this.post.set(data),
-                error: () => {}
+                next: (data) => {
+                    this.post.set(data);
+                    this.loading.set(false);
+                },
+                error: () => {
+                    this.loading.set(false);
+                }
             });
         }
     }

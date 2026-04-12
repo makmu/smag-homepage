@@ -155,6 +155,7 @@ protected posts = signal<Post[]>([]);
 
     onPostSaved(): void {
         this.closeModal();
+        this.loading.set(true);
         this.loadPage(1);
     }
 }
