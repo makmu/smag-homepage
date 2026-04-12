@@ -108,16 +108,7 @@ export class EventListComponent {
 
     constructor() {
         effect(() => {
-            this.eventService.getEvents().subscribe({
-                next: (data) => {
-                    this.events.set(data);
-                    this.loading.set(false);
-                },
-                error: (err) => {
-                    console.error('Failed to load events:', err);
-                    this.loading.set(false);
-                }
-            });
+            this.loadEvents();
         });
     }
 
@@ -132,18 +123,17 @@ export class EventListComponent {
 
     protected onEventSaved(): void {
         this.onModalClose();
-        this.refreshEvents();
+        this.loadEvents();
     }
 
-    private refreshEvents(): void {
+    private loadEvents(): void {
         this.loading.set(true);
         this.eventService.getEvents().subscribe({
             next: (data) => {
                 this.events.set(data);
                 this.loading.set(false);
             },
-            error: (err) => {
-                console.error('Failed to refresh events:', err);
+            error: () => {
                 this.loading.set(false);
             }
         });

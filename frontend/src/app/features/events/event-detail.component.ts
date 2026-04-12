@@ -258,17 +258,7 @@ export class EventDetailComponent {
         effect(() => {
             const eventId = Number(this.id());
             if (eventId) {
-                this.loading.set(true);
-                this.eventService.getEvent(eventId).subscribe({
-                    next: (data) => {
-                        this.event.set(data);
-                        this.loading.set(false);
-                    },
-                    error: () => {
-                        this.event.set(null);
-                        this.loading.set(false);
-                    }
-                });
+                this.loadEvent();
             }
         });
     }
@@ -283,8 +273,7 @@ export class EventDetailComponent {
 
     protected onEventSaved(): void {
         this.showEditModal.set(false);
-        this.loading.set(true);
-        this.refreshEvent();
+        this.loadEvent();
     }
     
     protected isSignupOpen(event: Event): boolean {
@@ -302,6 +291,10 @@ export class EventDetailComponent {
     }
 
     protected refreshEvent(): void {
+        this.loadEvent();
+    }
+
+    private loadEvent(): void {
         this.loading.set(true);
         const eventId = Number(this.id());
         if (eventId) {
@@ -311,6 +304,7 @@ export class EventDetailComponent {
                     this.loading.set(false);
                 },
                 error: () => {
+                    this.event.set(null);
                     this.loading.set(false);
                 }
             });
