@@ -149,6 +149,7 @@ final class PostController
         }
 
         $now = (new \DateTime())->format(\DateTime::ATOM);
+        $thumbnailUrl = $data['thumbnail_url'] ?? '/media/' . (int) $data['thumbnail_id'];
 
         $stmt = $this->getDb()->prepare(
             'UPDATE posts SET thumbnail_url = :thumbnail_url, title = :title, caption = :caption, date = :date, updated_at = :updated_at WHERE id = :id'
@@ -156,7 +157,7 @@ final class PostController
 
         $stmt->execute([
             'id' => $id,
-            'thumbnail_url' => $data['thumbnail_url'],
+            'thumbnail_url' => $thumbnailUrl,
             'title' => $data['title'],
             'caption' => $data['caption'],
             'date' => $data['date'],
