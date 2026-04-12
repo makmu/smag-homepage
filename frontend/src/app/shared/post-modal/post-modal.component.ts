@@ -1,15 +1,9 @@
-import { Component, inject, signal, output, ChangeDetectionStrategy, effect, OnDestroy } from '@angular/core';
+import { Component, inject, signal, output, input, ChangeDetectionStrategy, effect, OnDestroy, computed } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntil, Subject } from 'rxjs';
 import { MediaService, MediaUploadResponse } from '../../core/services/media.service';
-import { PostService, AddPostRequest } from '../../core/services/post.service';
-
-export interface PostFormData {
-    title: string;
-    caption: string;
-    date: string;
-    thumbnailId: number | null;
-}
+import { PostService, AddPostRequest, UpdatePostRequest, PostFormData } from '../../core/services/post.service';
+import { EditablePost } from './post-helpers';
 
 @Component({
     selector: 'app-post-modal',
@@ -24,7 +18,7 @@ export interface PostFormData {
     >
       <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <div class="mb-6 flex items-center justify-between">
-          <h2 id="post-modal-title" class="text-xl font-bold text-gray-800">Neuer Beitrag</h2>
+          <h2 id="post-modal-title" class="text-xl font-bold text-gray-800">{{ isEditMode() ? 'Beitrag bearbeiten' : 'Neuer Beitrag' }}</h2>
           <button
             type="button"
             (click)="close.emit()"
@@ -117,7 +111,9 @@ export interface PostFormData {
 })
 export class PostModalComponent implements OnDestroy {
     close = output<void>();
-    saved = output<AddPostRequest>();
+    saved = output<PostFormData>();
+
+    editablePost = input<EditablePost | null>(null);
 
     private readonly mediaService = inject(MediaService);
     private readonly postService = inject(PostService);
@@ -134,9 +130,28 @@ export class PostModalComponent implements OnDestroy {
     uploading = signal(false);
     error = signal<string | null>(null);
 
+    private existingThumbnailUrl = signal<string | null>(null);
+
+    readonly isEditMode = computed(() => this.editablePost() !== null);
+
+    constructor() {
+        effect(() => {
+            const editable = this.editablePost();
+            if (editable) {
+                this.form.patchValue({
+                    title: editable.title,
+                    caption: editable.caption,
+                    date: editable.date,
+                });
+                this.previewUrl.set(editable.thumbnailUrl);
+                this.existingThumbnailUrl.set(editable.thumbnailUrl);
+            }
+        });
+    }
+
     ngOnDestroy(): void {
         const url = this.previewUrl();
-        if (url) {
+        if (url && url.startsWith('blob:')) {
             URL.revokeObjectURL(url);
         }
         this.destroy$.next();
@@ -186,27 +201,40 @@ export class PostModalComponent implements OnDestroy {
     }
 
     isSubmitEnabled(): boolean {
-        return (
-            this.form.valid &&
-            this.thumbnailId() !== null &&
-            !this.uploading()
-        );
+        const isEdit = this.isEditMode();
+        const hasNewThumbnail = this.thumbnailId() !== null;
+        const hasExistingThumbnail = this.existingThumbnailUrl() !== null && this.previewUrl() === this.existingThumbnailUrl();
+
+        if (isEdit) {
+            return this.form.valid && (hasNewThumbnail || hasExistingThumbnail) && !this.uploading();
+        }
+
+        return this.form.valid && hasNewThumbnail && !this.uploading();
     }
 
     onSubmit(): void {
         if (!this.isSubmitEnabled()) return;
 
-        const thumbnailId = this.thumbnailId();
-        if (thumbnailId === null) return;
-
+        const isEdit = this.isEditMode();
         const formValue = this.form.getRawValue();
+        const newThumbnailId = this.thumbnailId();
 
-        const request: AddPostRequest = {
-            thumbnail_id: thumbnailId,
+        const request: UpdatePostRequest = {
             title: formValue.title,
             caption: formValue.caption,
             date: formValue.date,
         };
+
+        if (isEdit) {
+            if (newThumbnailId !== null) {
+                (request as AddPostRequest).thumbnail_id = newThumbnailId;
+            } else if (this.existingThumbnailUrl()) {
+                request.thumbnail_url = this.existingThumbnailUrl()!;
+            }
+        } else {
+            const req = request as AddPostRequest;
+            req.thumbnail_id = newThumbnailId!;
+        }
 
         this.saved.emit(request);
     }

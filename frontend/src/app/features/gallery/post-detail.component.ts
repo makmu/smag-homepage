@@ -4,20 +4,35 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
-import { PostService } from '../../core/services/post.service';
+import { PostService, UpdatePostRequest } from '../../core/services/post.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
+import { PostModalComponent } from '../../shared/post-modal/post-modal.component';
+import { EditablePost, postToEditablePost } from '../../shared/post-modal/post-helpers';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
 
 @Component({
     selector: 'app-post-detail',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [RouterLink, NgOptimizedImage, SmagLoaderComponent],
+    imports: [RouterLink, NgOptimizedImage, SmagLoaderComponent, PostModalComponent],
     template: `
     <div class="mt-6">
-      <div class="mb-6">
+      <div class="flex justify-between items-start mb-6">
         <a routerLink="/gallery" class="inline-flex items-center text-pink-600 hover:text-pink-700 font-medium">
           <span class="mr-2">←</span> Zurück zur Galerie
         </a>
+        @if (authService.isEditor() && post()) {
+          <button
+            type="button"
+            (click)="openEditModal()"
+            class="p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-colors"
+            aria-label="Beitrag bearbeiten"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+            </svg>
+          </button>
+        }
       </div>
 
       @if (loading()) {
@@ -74,6 +89,14 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         </div>
       }
     </div>
+
+    @if (showEditModal() && post()) {
+      <app-post-modal
+        [editablePost]="editablePost()"
+        (close)="closeEditModal()"
+        (saved)="onPostSaved($event)"
+      />
+    }
   `,
     styles: [`
       .gallery-viewport:hover .gallery-nav-overlay .nav-prev,
@@ -83,6 +106,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
     `]
 })
 export class PostDetailComponent {
+    protected readonly authService = inject(AuthService);
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly router = inject(Router);
@@ -94,6 +118,8 @@ export class PostDetailComponent {
     touchStartX = signal<number | null>(null);
     touchStartY = signal<number | null>(null);
     isSwipeCancelled = signal(false);
+    showEditModal = signal(false);
+    editablePost = signal<EditablePost | null>(null);
 
     constructor() {
         effect(() => {
@@ -172,5 +198,47 @@ export class PostDetailComponent {
 
         this.touchStartX.set(null);
         this.touchStartY.set(null);
+    }
+
+    openEditModal(): void {
+        const p = this.post();
+        if (!p) return;
+        this.editablePost.set({
+            id: p.id,
+            title: p.title,
+            caption: p.caption,
+            date: p.date,
+            thumbnailUrl: p.thumbnailUrl,
+        });
+        this.showEditModal.set(true);
+    }
+
+    closeEditModal(): void {
+        this.showEditModal.set(false);
+        this.editablePost.set(null);
+    }
+
+    onPostSaved(request: UpdatePostRequest): void {
+        const p = this.post();
+        if (!p) return;
+        this.postService.updatePost(p.id, request).subscribe({
+            next: () => {
+                this.closeEditModal();
+                this.refreshPost();
+            },
+            error: () => {
+                this.closeEditModal();
+            }
+        });
+    }
+
+    refreshPost(): void {
+        const postId = Number(this.id());
+        if (postId) {
+            this.postService.getPost(postId).subscribe({
+                next: (data) => this.post.set(data),
+                error: () => {}
+            });
+        }
     }
 }

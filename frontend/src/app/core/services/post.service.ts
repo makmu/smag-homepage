@@ -51,6 +51,16 @@ export interface AddPostRequest {
     date: string;
 }
 
+export interface UpdatePostRequest {
+    thumbnail_id?: number;
+    thumbnail_url?: string;
+    title: string;
+    caption: string;
+    date: string;
+}
+
+export type PostFormData = AddPostRequest | UpdatePostRequest;
+
 function mapApiToPost(item: PostApiItem): Post {
     const thumbUrl = item.thumbnail_url;
     const fullUrl = thumbUrl.startsWith('http')
@@ -115,7 +125,7 @@ export class PostService {
         return this.http.post<PostApiResponseSingle>(`${this.apiUrl}/posts`, post);
     }
 
-    updatePost(id: number, post: AddPostRequest): Observable<PostApiResponseSingle> {
+    updatePost(id: number, post: UpdatePostRequest): Observable<PostApiResponseSingle> {
         return this.http.put<PostApiResponseSingle>(`${this.apiUrl}/posts/${id}`, post);
     }
 }
