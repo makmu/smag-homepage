@@ -132,7 +132,7 @@ cd "$PROJECT_ROOT"
 
 cd "$BUILD_DIR"
 ZIP_NAME="deployment-$(date +%Y%m%d-%H%M%S).zip"
-zip -r "$ZIP_NAME" public backend data README.md
+zip -rq "$ZIP_NAME" public backend data README.md
 mv "$ZIP_NAME" "$PROJECT_ROOT/"
 cd "$PROJECT_ROOT"
 
@@ -140,54 +140,18 @@ trap 'rm -rf "$BUILD_DIR" "$PROJECT_ROOT/$ZIP_NAME"' EXIT
 
 echo "Deploying to $ENVIRONMENT environment..."
 
+echo "Copying setup script to server..."
+scp "$PROJECT_ROOT/deploy/setup.sh" "$DEPLOY_HOST:~/smag/$DEPLOYMENTS_FOLDER/"
+
 echo "Copying deployment package to server..."
 scp "$ZIP_NAME" "$DEPLOY_HOST:~/smag/$DEPLOYMENTS_FOLDER/"
 
 if [ "$COMMIT" = true ]; then
-    SYMLINK_CMD="ln -sfn \$NEW_DIR/public \$HOME/smag/$LIVE_SYMLINK"
     echo "WARNING: Symlink will be updated to point to new deployment!"
+    ssh "$DEPLOY_HOST" "cd ~/smag/$DEPLOYMENTS_FOLDER && bash setup.sh -d $DEPLOYMENTS_FOLDER -l $LIVE_SYMLINK -z $ZIP_NAME --commit && rm -f setup.sh"
 else
-    SYMLINK_CMD="# Symlink update skipped (use --commit to update)"
     echo "NOTE: Symlink will NOT be updated. Use --commit to switch to new deployment."
+    ssh "$DEPLOY_HOST" "cd ~/smag/$DEPLOYMENTS_FOLDER && bash setup.sh -d $DEPLOYMENTS_FOLDER -l $LIVE_SYMLINK -z $ZIP_NAME && rm -f setup.sh"
 fi
-
-ssh "$DEPLOY_HOST" "set -e
-    DEPLOYMENTS_DIR=\$HOME/smag/$DEPLOYMENTS_FOLDER
-    LATEST=\$(ls -1 \"\$DEPLOYMENTS_DIR\" 2>/dev/null | grep -E '^[0-9]+\$' | sort -n | tail -1)
-    if [ -z \"\$LATEST\" ]; then
-        NEW_NUM=1
-    else
-        NEW_NUM=\$((LATEST + 1))
-    fi
-    NEW_DIR=\$DEPLOYMENTS_DIR/\$NEW_NUM
-    mkdir -p \$NEW_DIR
-    cd \$NEW_DIR
-    unzip -o \$DEPLOYMENTS_DIR/$ZIP_NAME
-    rm \$DEPLOYMENTS_DIR/$ZIP_NAME
-    if [ -L \$HOME/smag/$LIVE_SYMLINK ]; then
-        CURRENT_LIVE=\$(readlink -f \$HOME/smag/$LIVE_SYMLINK)
-        OLD_CONFIG="\$CURRENT_LIVE/backend/config.php"
-        if [ -f "\$OLD_CONFIG" ]; then
-            cp "\$OLD_CONFIG" backend/
-            DB_PATH=\$(php -r "echo require '\$OLD_CONFIG'['DB_PATH'];")
-            UPLOAD_PATH=\$(php -r "echo require '\$OLD_CONFIG'['UPLOAD_PATH'];")
-            if [ -n "\$DB_PATH" ] && [ -f "\$DB_PATH" ]; then
-                NEW_DB_PATH=\$(php -r "echo require '\$NEW_DIR/backend/config.php'['DB_PATH'];")
-                mkdir -p "\$(dirname "\$NEW_DB_PATH")"
-                cp "\$DB_PATH" "\$NEW_DB_PATH"
-            fi
-            if [ -n "\$UPLOAD_PATH" ] && [ -d "\$UPLOAD_PATH" ]; then
-                NEW_UPLOAD_PATH=\$(php -r "echo require '\$NEW_DIR/backend/config.php'['UPLOAD_PATH'];")
-                mkdir -p "\$(dirname "\$NEW_UPLOAD_PATH")"
-                cp -r "\$UPLOAD_PATH" "\$(dirname "\$NEW_UPLOAD_PATH")/"
-            fi
-        fi
-    fi
-    if [ ! -f backend/config.php ] && [ -f backend/config.php.template ]; then
-        mv backend/config.php.template backend/config.php
-    fi
-    $SYMLINK_CMD
-    echo \"Prepared deployment \$NEW_NUM\"
-"
 
 echo "Done!"
