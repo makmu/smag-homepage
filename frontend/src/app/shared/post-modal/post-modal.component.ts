@@ -3,6 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { takeUntil, Subject } from 'rxjs';
 import { MediaService, MediaUploadResponse } from '../../core/services/media.service';
 import { PostService, AddPostRequest, UpdatePostRequest, PostFormData } from '../../core/services/post.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { EditablePost } from './post-helpers';
 
 @Component({
@@ -21,7 +22,7 @@ import { EditablePost } from './post-helpers';
           <h2 id="post-modal-title" class="text-xl font-bold text-gray-800">{{ isEditMode() ? 'Beitrag bearbeiten' : 'Neuer Beitrag' }}</h2>
           <button
             type="button"
-            (click)="close.emit()"
+            (click)="cancelled.emit()"
             class="text-gray-400 hover:text-gray-600"
             aria-label="Schließen"
           >
@@ -87,19 +88,52 @@ import { EditablePost } from './post-helpers';
           <div class="flex gap-2">
             <button
               type="submit"
-              [disabled]="!isSubmitEnabled() || uploading()"
+              [disabled]="!isSubmitEnabled() || uploading() || saving() || deleting()"
               class="rounded bg-pink-500 px-4 py-2 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300"
             >
               @if (uploading()) {
                 Wird hochgeladen...
+              } @else if (saving()) {
+                <span class="flex items-center gap-2">
+                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Speichere...
+                </span>
               } @else {
                 Speichern
               }
             </button>
+            @if (isEditMode() && authService.isEditor()) {
+              <button 
+                type="button"
+                [class]="deleteConfirm() 
+                  ? 'px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors'
+                  : 'px-4 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 font-medium transition-colors'"
+                (click)="onDeleteClick()"
+                [disabled]="uploading() || saving() || deleting()"
+              >
+                @if (deleting()) {
+                  <span class="flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Lösche...
+                  </span>
+                } @else if (deleteConfirm()) {
+                  Erneut klicken zum Bestätigen
+                } @else {
+                  Löschen
+                }
+              </button>
+            }
             <button
               type="button"
-              (click)="close.emit()"
-              class="rounded bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300"
+              (click)="cancelled.emit()"
+              [disabled]="uploading() || saving() || deleting()"
+              class="rounded bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:bg-gray-200 disabled:text-gray-400"
             >
               Abbrechen
             </button>
@@ -110,14 +144,19 @@ import { EditablePost } from './post-helpers';
   `,
 })
 export class PostModalComponent implements OnDestroy {
-    close = output<void>();
-    saved = output<PostFormData>();
+    cancelled = output<void>();
+    saved = output<void>();
 
     editablePost = input<EditablePost | null>(null);
 
     private readonly mediaService = inject(MediaService);
     private readonly postService = inject(PostService);
+    readonly authService = inject(AuthService);
     private readonly destroy$ = new Subject<void>();
+
+    deleteConfirm = signal(false);
+    deleting = signal(false);
+    private deleteTimeout: ReturnType<typeof setTimeout> | null = null;
 
     form = new FormGroup({
         title: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -128,6 +167,7 @@ export class PostModalComponent implements OnDestroy {
     thumbnailId = signal<number | null>(null);
     previewUrl = signal<string | null>(null);
     uploading = signal(false);
+    saving = signal(false);
     error = signal<string | null>(null);
 
     private existingThumbnailUrl = signal<string | null>(null);
@@ -206,10 +246,10 @@ export class PostModalComponent implements OnDestroy {
         const hasExistingThumbnail = this.existingThumbnailUrl() !== null && this.previewUrl() === this.existingThumbnailUrl();
 
         if (isEdit) {
-            return this.form.valid && (hasNewThumbnail || hasExistingThumbnail) && !this.uploading();
+            return this.form.valid && (hasNewThumbnail || hasExistingThumbnail) && !this.uploading() && !this.saving();
         }
 
-        return this.form.valid && hasNewThumbnail && !this.uploading();
+        return this.form.valid && hasNewThumbnail && !this.uploading() && !this.saving();
     }
 
     onSubmit(): void {
@@ -225,17 +265,91 @@ export class PostModalComponent implements OnDestroy {
             date: formValue.date,
         };
 
+        this.saving.set(true);
+
         if (isEdit) {
             if (newThumbnailId !== null) {
                 (request as AddPostRequest).thumbnail_id = newThumbnailId;
             } else if (this.existingThumbnailUrl()) {
                 request.thumbnail_url = this.existingThumbnailUrl()!;
             }
+            this.postService.updatePost(this.editablePost()!.id, request).pipe(takeUntil(this.destroy$)).subscribe({
+                next: (response) => {
+                    this.saving.set(false);
+                    if (response.error) {
+                        this.error.set(response.error);
+                    } else {
+                        this.saved.emit();
+                    }
+                },
+                error: () => {
+                    this.saving.set(false);
+                    this.error.set('Fehler beim Speichern.');
+                }
+            });
         } else {
             const req = request as AddPostRequest;
             req.thumbnail_id = newThumbnailId!;
+            this.postService.createPost(req).pipe(takeUntil(this.destroy$)).subscribe({
+                next: (response) => {
+                    this.saving.set(false);
+                    if (response.error) {
+                        this.error.set(response.error);
+                    } else {
+                        this.saved.emit();
+                    }
+                },
+                error: () => {
+                    this.saving.set(false);
+                    this.error.set('Fehler beim Speichern.');
+                }
+            });
+        }
+    }
+
+    onDeleteClick(): void {
+        if (this.deleteConfirm()) {
+            this.performDelete();
+        } else {
+            this.deleteConfirm.set(true);
+            this.resetDeleteTimeout();
+        }
+    }
+
+    private resetDeleteTimeout(): void {
+        if (this.deleteTimeout) {
+            clearTimeout(this.deleteTimeout);
+        }
+        this.deleteTimeout = setTimeout(() => {
+            this.deleteConfirm.set(false);
+        }, 5000);
+    }
+
+    private performDelete(): void {
+        if (this.deleteTimeout) {
+            clearTimeout(this.deleteTimeout);
         }
 
-        this.saved.emit(request);
+        const post = this.editablePost();
+        if (!post) {
+            this.error.set('Beitrag nicht gefunden');
+            return;
+        }
+
+        this.deleting.set(true);
+        this.postService.deletePost(post.id).pipe(takeUntil(this.destroy$)).subscribe({
+            next: (response) => {
+                this.deleting.set(false);
+                if (response.error) {
+                    this.error.set(response.error);
+                } else {
+                    this.saved.emit();
+                }
+            },
+            error: () => {
+                this.deleting.set(false);
+                this.error.set('Fehler beim Löschen des Beitrags');
+            }
+        });
     }
 }

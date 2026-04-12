@@ -43,6 +43,7 @@ return function (App $app): void {
     $app->get('/api/v1/posts/{id}', [$postController, 'getPost']);
     $app->post('/api/v1/posts', [$postController, 'createPost'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->put('/api/v1/posts/{id}', [$postController, 'updatePost'])->add(new TokenAuthenticationMiddleware($tokenService));
+    $app->delete('/api/v1/posts/{id}', [$postController, 'deletePost'])->add(new TokenAuthenticationMiddleware($tokenService));
 
     $mediaController = new MediaController();
 

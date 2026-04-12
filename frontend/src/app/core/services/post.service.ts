@@ -128,4 +128,8 @@ export class PostService {
     updatePost(id: number, post: UpdatePostRequest): Observable<PostApiResponseSingle> {
         return this.http.put<PostApiResponseSingle>(`${this.apiUrl}/posts/${id}`, post);
     }
+
+    deletePost(id: number): Observable<PostApiResponseSingle> {
+        return this.http.delete<PostApiResponseSingle>(`${this.apiUrl}/posts/${id}`);
+    }
 }
