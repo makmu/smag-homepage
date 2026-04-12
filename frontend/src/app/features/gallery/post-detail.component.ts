@@ -1,6 +1,7 @@
-import { Component, input, signal, inject, effect, DestroyRef } from '@angular/core';
+import { Component, input, signal, inject, effect, DestroyRef, OnDestroy } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
@@ -105,12 +106,13 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
       }
     `]
 })
-export class PostDetailComponent {
+export class PostDetailComponent implements OnDestroy {
     protected readonly authService = inject(AuthService);
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly router = inject(Router);
     private readonly destroyRef = inject(DestroyRef);
+    private readonly destroy$ = new Subject<void>();
 
     id = input<number>();
     post = signal<ReturnType<typeof this.postService.getPost> extends import("rxjs").Observable<infer T> ? T : never | null>(null);
@@ -125,21 +127,33 @@ export class PostDetailComponent {
         effect(() => {
             const postId = Number(this.id());
             if (postId) {
-                this.loading.set(true);
-                this.postService.getPost(postId).pipe(
-                    takeUntilDestroyed(this.destroyRef)
-                ).subscribe({
-                    next: (data) => {
-                        this.post.set(data);
-                        this.loading.set(false);
-                    },
-                    error: () => {
-                        this.post.set(null);
-                        this.loading.set(false);
-                    }
-                });
+                this.loadPost(true);
             }
         });
+    }
+
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
+    private loadPost(setLoading: boolean): void {
+        if (setLoading) {
+            this.loading.set(true);
+        }
+        const postId = Number(this.id());
+        if (postId) {
+            this.postService.getPost(postId).pipe(takeUntil(this.destroy$)).subscribe({
+                next: (data) => {
+                    this.post.set(data);
+                    this.loading.set(false);
+                },
+                error: () => {
+                    this.post.set(null);
+                    this.loading.set(false);
+                }
+            });
+        }
     }
 
     formatDate(dateStr: string): string {
@@ -220,22 +234,10 @@ export class PostDetailComponent {
 
     onPostSaved(): void {
         this.closeEditModal();
-        this.loading.set(true);
-        this.refreshPost();
+        this.loadPost(true);
     }
 
     refreshPost(): void {
-        const postId = Number(this.id());
-        if (postId) {
-            this.postService.getPost(postId).subscribe({
-                next: (data) => {
-                    this.post.set(data);
-                    this.loading.set(false);
-                },
-                error: () => {
-                    this.loading.set(false);
-                }
-            });
-        }
+        this.loadPost(true);
     }
 }
