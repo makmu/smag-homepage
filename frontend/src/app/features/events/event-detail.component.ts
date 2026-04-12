@@ -5,11 +5,10 @@ import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { ORANGE_STYLE } from '../../core/constants/theme-colors';
 import { SignupDialogComponent } from '../../shared/components/signup-dialog.component';
-import { EventModalComponent, EditableEvent } from '../../shared/event-modal/event-modal.component';
+import { EventModalComponent } from '../../shared/event-modal/event-modal.component';
 import { SignupDetailModalComponent } from '../../shared/signup-detail-modal/signup-detail-modal.component';
-import { EventService, Event, AddEventRequest } from '../../core/services/event.service';
+import { EventService, Event } from '../../core/services/event.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { eventToEditableEvent } from './event-helpers';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
 
@@ -214,9 +213,9 @@ export interface EventSignup {
 
     @if (showEditModal() && event()) {
       <app-event-modal 
-        [editableEvent]="editableEvent()"
-        (close)="showEditModal.set(false)"
-        (saved)="onEventSaved($event)"
+        [eventId]="editableEventId()"
+        (cancelled)="showEditModal.set(false)"
+        (saved)="onEventSaved()"
       />
     }
 
@@ -237,7 +236,7 @@ export class EventDetailComponent {
     protected showEditModal = signal(false);
     protected showSignupDetailModal = signal(false);
     protected selectedSignupId = signal<number | null>(null);
-    protected editableEvent = signal<EditableEvent | null>(null);
+    protected editableEventId = signal<number | null>(null);
     protected csvDownloadError = signal<string | null>(null);
     
     private readonly eventService = inject(EventService);
@@ -278,26 +277,13 @@ export class EventDetailComponent {
         const evt = this.event();
         if (!evt) return;
 
-        this.editableEvent.set(eventToEditableEvent(evt));
+        this.editableEventId.set(evt.id);
         this.showEditModal.set(true);
     }
 
-    protected onEventSaved(eventData: AddEventRequest): void {
-        const evt = this.event();
-        if (!evt) return;
-
-        this.eventService.updateEvent(evt.id, eventData).subscribe({
-            next: (response) => {
-                if (response.data) {
-                    console.log('Event updated:', response.data);
-                    this.refreshEvent();
-                } else if (response.error) {
-                    console.error('Failed to update event:', response.error);
-                }
-            },
-            error: (err) => console.error('Failed to update event:', err)
-        });
+    protected onEventSaved(): void {
         this.showEditModal.set(false);
+        this.refreshEvent();
     }
     
     protected isSignupOpen(event: Event): boolean {

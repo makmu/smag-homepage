@@ -1,7 +1,10 @@
-import { Component, inject, signal, output, input, effect } from '@angular/core';
+import { Component, inject, signal, output, input, effect, ChangeDetectionStrategy, computed, OnDestroy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntil, Subject } from 'rxjs';
 import { AngularTiptapEditorComponent } from '@flogeez/angular-tiptap-editor';
 import { extractLocalDateTime, convertLocalToUtc } from '../utils/date.utils';
+import { EventService, AddEventRequest, Event } from '../../core/services/event.service';
+import { SmagLoaderComponent } from '../loader/loader.component';
 
 export type SignupType = 'none' | 'on_site' | 'special';
 
@@ -33,21 +36,10 @@ export interface EditableEvent {
   signup_instructions: string | null;
 }
 
-export interface AddEventRequest {
-  title: string;
-  teaser: string;
-  location: string;
-  date: string;
-  description: string;
-  signup_type: SignupType;
-  signup_deadline: string | null;
-  signup_limit: number | null;
-  signup_instructions: string | null;
-}
-
 @Component({
   selector: 'app-event-modal',
-  imports: [ReactiveFormsModule, AngularTiptapEditorComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ReactiveFormsModule, AngularTiptapEditorComponent, SmagLoaderComponent],
   template: `
     <div
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -57,11 +49,12 @@ export interface AddEventRequest {
     >
       <div class="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <div class="mb-6 flex items-center justify-between">
-          <h2 id="event-modal-title" class="text-xl font-bold text-gray-800">{{ isEditing() ? 'Veranstaltung bearbeiten' : 'Neue Veranstaltung' }}</h2>
+          <h2 id="event-modal-title" class="text-xl font-bold text-gray-800">{{ isEditMode() ? 'Veranstaltung bearbeiten' : 'Neue Veranstaltung' }}</h2>
           <button
             type="button"
-            (click)="close.emit()"
-            class="text-gray-400 hover:text-gray-600"
+            (click)="cancelled.emit()"
+            [disabled]="saving() || loading()"
+            class="text-gray-400 hover:text-gray-600 disabled:text-gray-300"
             aria-label="Schließen"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,6 +63,11 @@ export interface AddEventRequest {
           </button>
         </div>
         
+        @if (loading()) {
+          <div class="flex justify-center py-12">
+            <smag-loader [size]="48" />
+          </div>
+        } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
           <div class="mb-4">
             <label for="title" class="mb-1 block text-sm font-medium text-gray-700">Titel *</label>
@@ -234,33 +232,63 @@ export interface AddEventRequest {
             </div>
           }
 
+          @if (error()) {
+            <p class="mb-4 text-sm text-red-500">{{ error() }}</p>
+          }
+
           <div class="flex gap-3">
             <button
               type="submit"
-              [disabled]="!isSubmitEnabled()"
+              [disabled]="!isSubmitEnabled() || saving() || loading()"
               class="flex-1 rounded bg-pink-600 px-4 py-2 text-white transition-colors hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Speichern
+              @if (saving()) {
+                <span class="flex items-center justify-center gap-2">
+                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Speichere...
+                </span>
+              } @else {
+                Speichern
+              }
             </button>
             <button
               type="button"
-              (click)="close.emit()"
-              class="flex-1 rounded border border-gray-300 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50"
+              (click)="cancelled.emit()"
+              [disabled]="saving() || loading()"
+              class="flex-1 rounded border border-gray-300 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Abbrechen
             </button>
           </div>
         </form>
+        }
       </div>
     </div>
   `,
 })
-export class EventModalComponent {
-  close = output<void>();
-  saved = output<AddEventRequest>();
+export class EventModalComponent implements OnDestroy {
+  cancelled = output<void>();
+  saved = output<void>();
 
-  editableEvent = input<EditableEvent | null>(null);
-  isEditing = signal(false);
+  eventId = input<number | null>(null);
+
+  private readonly eventService = inject(EventService);
+  private readonly destroy$ = new Subject<void>();
+  private loadedEventId: number | null = null;
+
+  saving = signal(false);
+  loading = signal(false);
+  error = signal<string | null>(null);
+
+  readonly isEditMode = computed(() => this.eventId() !== null);
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   form = new FormGroup({
     title: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -279,27 +307,55 @@ export class EventModalComponent {
 
   constructor() {
     effect(() => {
-      const event = this.editableEvent();
-      if (event) {
-        this.isEditing.set(true);
-        this.populateForm(event);
-      } else {
-        this.isEditing.set(false);
-        this.form.reset({
-          signupType: 'none',
-          hasLimit: false,
-        });
+      const id = this.eventId();
+      if (id !== this.loadedEventId) {
+        this.loadedEventId = id;
+        if (id) {
+          this.loadEvent(id);
+        } else {
+          this.form.reset({
+            signupType: 'none',
+            hasLimit: false,
+          });
+        }
       }
     });
   }
 
-  private populateForm(event: EditableEvent): void {
+  private loadEvent(id: number): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    this.eventService.getEvent(id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (event) => {
+        this.loading.set(false);
+        if (event) {
+          this.populateFormFromService(event);
+        } else {
+          this.error.set('Veranstaltung nicht gefunden');
+        }
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error.set('Fehler beim Laden der Veranstaltung');
+      }
+    });
+  }
+
+  private populateFormFromService(event: Event): void {
+    let signupType: SignupType = 'none';
+    switch (event.signupType) {
+      case 'none': signupType = 'none'; break;
+      case 'open': signupType = 'on_site'; break;
+      case 'instructions': signupType = 'special'; break;
+    }
+
     const { date: dateStr, time: timeStr } = extractLocalDateTime(event.date);
 
     let deadlineDate = '';
     let deadlineTime = '';
-    if (event.signup_deadline) {
-      const { date, time } = extractLocalDateTime(event.signup_deadline);
+    if (event.signupDeadline) {
+      const { date, time } = extractLocalDateTime(event.signupDeadline);
       deadlineDate = date;
       deadlineTime = time;
     }
@@ -310,13 +366,13 @@ export class EventModalComponent {
       location: event.location,
       date: dateStr,
       time: timeStr,
-      description: event.description,
-      signupType: event.signup_type,
+      description: event.fullDescription,
+      signupType: signupType,
       signupDeadlineDate: deadlineDate,
       signupDeadlineTime: deadlineTime,
-      hasLimit: event.signup_limit !== null,
-      signupLimit: event.signup_limit,
-      signupInstructions: event.signup_instructions ?? '',
+      hasLimit: event.signupLimit !== undefined,
+      signupLimit: event.signupLimit ?? null,
+      signupInstructions: event.signupInstructions ?? '',
     });
   }
 
@@ -353,7 +409,28 @@ export class EventModalComponent {
       signup_instructions: signupInstructions,
     };
 
-    this.saved.emit(apiRequest);
+    this.saving.set(true);
+    this.error.set(null);
+
+    const isEdit = this.isEditMode();
+    const obs = isEdit
+      ? this.eventService.updateEvent(this.eventId()!, apiRequest)
+      : this.eventService.createEvent(apiRequest);
+
+    obs.pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        this.saving.set(false);
+        if (response.error) {
+          this.error.set(response.error);
+        } else {
+          this.saved.emit();
+        }
+      },
+      error: () => {
+        this.saving.set(false);
+        this.error.set('Fehler beim Speichern');
+      }
+    });
   }
 
   isSubmitEnabled(): boolean {
