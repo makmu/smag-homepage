@@ -54,3 +54,10 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Design services around a single responsibility
 - Use the `providedIn: 'root'` option for singleton services
 - Use the `inject()` function instead of constructor injection
+
+## Authentication
+
+- **DO NOT manually insert bearer tokens** in HTTP requests
+- The `AuthInterceptor` (`src/app/core/auth/auth.interceptor.ts`) automatically handles token injection
+- It also handles token refresh on 401 responses
+- Simply make HTTP calls without auth headers; the interceptor adds them automatically
