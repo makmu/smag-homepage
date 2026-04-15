@@ -1,9 +1,10 @@
-import { Component, input, signal, inject, effect, DestroyRef, OnDestroy } from '@angular/core';
+import { Component, input, signal, inject, effect, DestroyRef, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
+import { ViewportScroller } from '@angular/common';
 import { NgOptimizedImage } from '@angular/common';
 import { PostService } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -18,7 +19,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
     imports: [RouterLink, NgOptimizedImage, SmagLoaderComponent, PostModalComponent],
     template: `
     <div class="mt-6">
-      <div class="flex justify-between items-start mb-6">
+      <div id="gallery-top" class="flex justify-between items-start mb-6">
         <a routerLink="/gallery" class="inline-flex items-center text-pink-600 hover:text-pink-700 font-medium">
           <span class="mr-2">←</span> Zurück zur Galerie
         </a>
@@ -42,10 +43,7 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
         </div>
       } @else if (post()) {
         <div class="bg-white md:shadow-md md:rounded-lg md:mx-auto md:max-w-[1100px] md:mt-5 md:pt-4">
-          <div class="gallery-viewport relative w-full"
-               (touchstart)="onTouchStart($event)"
-               (touchmove)="onTouchMove($event)"
-               (touchend)="onTouchEnd($event)">
+          <div class="gallery-viewport relative w-full" #galleryViewport>
             <img 
               [ngSrc]="post()!.thumbnailUrl" 
               [alt]="post()!.title"
@@ -106,11 +104,12 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
       }
     `]
 })
-export class PostDetailComponent implements OnDestroy {
+export class PostDetailComponent implements OnDestroy, AfterViewInit {
     protected readonly authService = inject(AuthService);
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly router = inject(Router);
+    private readonly viewportScroller = inject(ViewportScroller);
     private readonly destroyRef = inject(DestroyRef);
     private readonly destroy$ = new Subject<void>();
 
@@ -122,6 +121,7 @@ export class PostDetailComponent implements OnDestroy {
     isSwipeCancelled = signal(false);
     showEditModal = signal(false);
     editablePost = signal<EditablePost | null>(null);
+    @ViewChild('galleryViewport') galleryViewport!: ElementRef<HTMLElement>;
 
     constructor() {
         effect(() => {
@@ -133,8 +133,29 @@ export class PostDetailComponent implements OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this.removeEventListeners();
         this.destroy$.next();
         this.destroy$.complete();
+    }
+
+    ngAfterViewInit(): void {
+        this.setupEventListeners();
+    }
+
+    private setupEventListeners(): void {
+        const el = this.galleryViewport.nativeElement;
+        el.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: true });
+        el.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+        el.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: true });
+    }
+
+    private removeEventListeners(): void {
+        const el = this.galleryViewport?.nativeElement;
+        if (el) {
+            el.removeEventListener('touchstart', this.onTouchStart.bind(this));
+            el.removeEventListener('touchmove', this.onTouchMove.bind(this));
+            el.removeEventListener('touchend', this.onTouchEnd.bind(this));
+        }
     }
 
     private loadPost(): void {
@@ -145,6 +166,7 @@ export class PostDetailComponent implements OnDestroy {
                 next: (data) => {
                     this.post.set(data);
                     this.loading.set(false);
+                    this.viewportScroller.scrollToAnchor('gallery-top');
                 },
                 error: () => {
                     this.post.set(null);
@@ -175,13 +197,21 @@ export class PostDetailComponent implements OnDestroy {
 
     onTouchMove(event: TouchEvent): void {
         const touch = event.touches[0];
-        if (!touch || this.isSwipeCancelled()) return;
+        if (!touch) return;
 
+        const startX = this.touchStartX();
         const startY = this.touchStartY();
-        if (startY === null) return;
+        if (startX === null || startY === null) return;
 
-        if (Math.abs(touch.clientY - startY) > 10) {
+        if (this.isSwipeCancelled()) return;
+
+        const deltaX = Math.abs(touch.clientX - startX);
+        const deltaY = Math.abs(touch.clientY - startY);
+
+        if (deltaY > deltaX) {
             this.isSwipeCancelled.set(true);
+        } else if (deltaX > 10) {
+            event.preventDefault();
         }
     }
 
