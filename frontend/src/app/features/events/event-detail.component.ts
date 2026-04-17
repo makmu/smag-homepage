@@ -2,6 +2,7 @@ import { Component, input, signal, inject, effect, computed } from '@angular/cor
 import { ChangeDetectionStrategy } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
+import { ViewportScroller } from '@angular/common';
 import { DatePipe } from '@angular/common';
 import { ORANGE_STYLE } from '../../core/constants/theme-colors';
 import { SignupDialogComponent } from '../../shared/components/signup-dialog.component';
@@ -232,6 +233,7 @@ export class EventDetailComponent {
     protected readonly ORANGE_STYLE = ORANGE_STYLE;
     protected readonly authService = inject(AuthService);
     private readonly sanitizer = inject(DomSanitizer);
+    private readonly viewportScroller = inject(ViewportScroller);
     protected showSignupDialog = signal(false);
     protected showEditModal = signal(false);
     protected showSignupDetailModal = signal(false);
@@ -244,6 +246,7 @@ export class EventDetailComponent {
     id = input<number>();
     event = signal<Event | null>(null);
     loading = signal(true);
+    private hasScrolled = signal(false);
 
     private readonly dateParts = computed(() => {
         const evt = this.event();
@@ -302,6 +305,10 @@ export class EventDetailComponent {
                 next: (data) => {
                     this.event.set(data);
                     this.loading.set(false);
+                    if (!this.hasScrolled()) {
+                        this.hasScrolled.set(true);
+                        this.viewportScroller.scrollToPosition([0, 0]);
+                    }
                 },
                 error: () => {
                     this.event.set(null);
