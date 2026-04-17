@@ -4,7 +4,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
-import { NgOptimizedImage } from '@angular/common';
+import { NgOptimizedImage, ViewportScroller } from '@angular/common';
 import { PostService } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
@@ -111,12 +111,14 @@ export class PostDetailComponent implements OnDestroy {
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly router = inject(Router);
+    private readonly viewportScroller = inject(ViewportScroller);
     private readonly destroyRef = inject(DestroyRef);
     private readonly destroy$ = new Subject<void>();
 
     id = input<number>();
     post = signal<ReturnType<typeof this.postService.getPost> extends import("rxjs").Observable<infer T> ? T : never | null>(null);
     loading = signal(true);
+    private hasScrolled = signal(false);
     touchStartX = signal<number | null>(null);
     touchStartY = signal<number | null>(null);
     isSwipeCancelled = signal(false);
@@ -145,6 +147,10 @@ export class PostDetailComponent implements OnDestroy {
                 next: (data) => {
                     this.post.set(data);
                     this.loading.set(false);
+                    if (!this.hasScrolled()) {
+                        this.hasScrolled.set(true);
+                        this.viewportScroller.scrollToPosition([0, 0]);
+                    }
                 },
                 error: () => {
                     this.post.set(null);
