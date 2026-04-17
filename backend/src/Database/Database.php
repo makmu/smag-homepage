@@ -85,10 +85,16 @@ final class Database
                 email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT \'admin\',
+                image_url TEXT,
                 created_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
                 updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
             )
         ');
+
+        try {
+            $pdo->exec('ALTER TABLE users ADD COLUMN image_url TEXT');
+        } catch (PDOException $e) {
+        }
 
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS tokens (
