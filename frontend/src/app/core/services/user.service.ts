@@ -39,6 +39,32 @@ export interface CreateUserApiResponse {
     error: string | null;
 }
 
+export interface EditableUser {
+    id: number;
+    name: string;
+    email: string;
+    imageUrl: string | null;
+}
+
+export interface UpdateUserRequest {
+    name: string;
+    email: string;
+    password?: string;
+    image_url?: string;
+}
+
+interface UserApiSingleItem {
+    id: number;
+    name: string;
+    email: string;
+    image_url: string | null;
+}
+
+interface UserApiResponseSingle {
+    data: UserApiSingleItem | null;
+    error: string | null;
+}
+
 function mapApiToTeamMember(item: UserApiItem): TeamMember {
     return {
         id: item.id,
@@ -60,5 +86,25 @@ export class UserService {
 
     createUser(request: CreateUserRequest): Observable<CreateUserApiResponse> {
         return this.http.post<CreateUserApiResponse>(`${this.apiUrl}/users`, request);
+    }
+
+    getUser(id: number): Observable<EditableUser | null> {
+        return this.http.get<UserApiResponseSingle>(`${this.apiUrl}/users/${id}`).pipe(
+            map(response => {
+                if (response.data) {
+                    return {
+                        id: response.data.id,
+                        name: response.data.name,
+                        email: response.data.email,
+                        imageUrl: response.data.image_url,
+                    };
+                }
+                return null;
+            })
+        );
+    }
+
+    updateUser(id: number, request: UpdateUserRequest): Observable<CreateUserApiResponse> {
+        return this.http.put<CreateUserApiResponse>(`${this.apiUrl}/users/${id}`, request);
     }
 }

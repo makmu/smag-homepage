@@ -77,6 +77,67 @@ final class UserController
         return $this->successResponse($response->withStatus(201), $user);
     }
 
+    public function getUser(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = (int) $args['id'];
+        $role = $request->getAttribute('user_role');
+        if ($role !== 'admin') {
+            return $this->errorResponse($response, 403, 'Forbidden');
+        }
+
+        $user = $this->userService->findById($id);
+        if ($user === null) {
+            return $this->errorResponse($response, 404, 'User not found');
+        }
+
+        return $this->successResponse($response, $user);
+    }
+
+    public function updateUser(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = (int) $args['id'];
+        $role = $request->getAttribute('user_role');
+        if ($role !== 'admin') {
+            return $this->errorResponse($response, 403, 'Forbidden');
+        }
+
+        $existing = $this->userService->findById($id);
+        if ($existing === null) {
+            return $this->errorResponse($response, 404, 'User not found');
+        }
+
+        $data = $request->getParsedBody();
+
+        if (empty($data['name']) || empty($data['email'])) {
+            return $this->errorResponse($response, 400, 'Missing required fields: name, email');
+        }
+
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            return $this->errorResponse($response, 400, 'Invalid email address');
+        }
+
+        $password = !empty($data['password']) ? $data['password'] : null;
+        if ($password !== null && strlen($password) < 8) {
+            return $this->errorResponse($response, 400, 'Password must be at least 8 characters');
+        }
+
+        if ($this->userService->findByEmailExcludingId($data['email'], $id) !== null) {
+            return $this->errorResponse($response, 409, 'A user with this email address already exists');
+        }
+
+        $name = htmlspecialchars(strip_tags(trim($data['name'])), ENT_QUOTES, 'UTF-8');
+        $email = trim($data['email']);
+        $imageUrl = $data['image_url'] ?? $existing['image_url'] ?? null;
+
+        try {
+            $user = $this->userService->updateUser($id, $name, $email, $password, $imageUrl);
+        } catch (\Exception $e) {
+            return $this->errorResponse($response, 500, 'Failed to update user');
+        }
+
+        return $this->successResponse($response, $user);
+    }
+
     private function updateImageUrl(int $userId, string $imageUrl): void
     {
         $pdo = \App\Database\Database::getConnection();
