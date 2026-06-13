@@ -2,6 +2,12 @@ This repository is hosted on github https://github.com/makmu/smag-homepage
 
 Any commit related to a github issue must contain the number of the github issue at the start of the message followed by a colon an the actual message, e.g. "#18: Hide past events from unauthenticated users"
 
+## GitHub Operations
+
+When creating pull requests or performing GitHub operations:
+1. First try using the GitHub MCP tools (e.g., `github_create_pull_request`, `github_create_issue`, etc.)
+2. If the MCP tools fail, fall back to the `gh` CLI (e.g., `gh pr create`)
+
 ## Issue Management
 
 - Issues should never be closed without explicit confirmation from the user

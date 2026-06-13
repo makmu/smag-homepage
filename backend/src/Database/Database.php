@@ -84,7 +84,6 @@ final class Database
                 name TEXT NOT NULL,
                 email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT \'admin\',
                 image_url TEXT,
                 created_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
                 updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))
@@ -96,17 +95,26 @@ final class Database
         } catch (PDOException $e) {
         }
 
+        try {
+            $pdo->exec('ALTER TABLE users DROP COLUMN role');
+        } catch (PDOException $e) {
+        }
+
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS tokens (
                 token CHAR(64) NOT NULL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
-                role VARCHAR(50) NOT NULL,
                 type TEXT NOT NULL CHECK(type IN (\'access\', \'refresh\')),
                 expires_at TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime(\'now\')),
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         ');
+
+        try {
+            $pdo->exec('ALTER TABLE tokens DROP COLUMN role');
+        } catch (PDOException $e) {
+        }
 
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_tokens_user_id ON tokens(user_id)');
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_tokens_expires ON tokens(expires_at)');

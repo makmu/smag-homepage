@@ -29,11 +29,6 @@ final class UserController
 
     public function createUser(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $role = $request->getAttribute('user_role');
-        if ($role !== 'admin') {
-            return $this->errorResponse($response, 403, 'Forbidden');
-        }
-
         $data = $request->getParsedBody();
 
         $requiredFields = ['name', 'email', 'password'];
@@ -64,7 +59,7 @@ final class UserController
         $imageUrl = !empty($data['image_url']) ? $data['image_url'] : null;
 
         try {
-            $user = $this->userService->createUser($name, $email, $data['password'], 'admin');
+            $user = $this->userService->createUser($name, $email, $data['password']);
         } catch (\Exception $e) {
             return $this->errorResponse($response, 500, 'Failed to create user');
         }
@@ -80,10 +75,6 @@ final class UserController
     public function getUser(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $id = (int) $args['id'];
-        $role = $request->getAttribute('user_role');
-        if ($role !== 'admin') {
-            return $this->errorResponse($response, 403, 'Forbidden');
-        }
 
         $user = $this->userService->findById($id);
         if ($user === null) {
@@ -96,10 +87,6 @@ final class UserController
     public function updateUser(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $id = (int) $args['id'];
-        $role = $request->getAttribute('user_role');
-        if ($role !== 'admin') {
-            return $this->errorResponse($response, 403, 'Forbidden');
-        }
 
         $existing = $this->userService->findById($id);
         if ($existing === null) {
@@ -141,10 +128,6 @@ final class UserController
     public function deleteUser(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $id = (int) $args['id'];
-        $role = $request->getAttribute('user_role');
-        if ($role !== 'admin') {
-            return $this->errorResponse($response, 403, 'Forbidden');
-        }
 
         $existing = $this->userService->findById($id);
         if ($existing === null) {
@@ -154,10 +137,6 @@ final class UserController
         $currentUserId = (int) $request->getAttribute('user_id');
         if ($currentUserId === $id) {
             return $this->errorResponse($response, 400, 'You cannot delete yourself');
-        }
-
-        if ($existing['role'] === 'admin' && $this->userService->countAdminUsers() <= 1) {
-            return $this->errorResponse($response, 400, 'The last admin user cannot be deleted');
         }
 
         try {
