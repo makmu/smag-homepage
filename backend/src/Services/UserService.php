@@ -72,4 +72,21 @@ final class UserService
 
         return $this->findById((int) $pdo->lastInsertId());
     }
+
+    public function findAll(): array
+    {
+        $pdo = Database::getConnection();
+        
+        $stmt = $pdo->prepare('SELECT id, name, image_url FROM users ORDER BY name ASC');
+        $stmt->execute();
+        $users = $stmt->fetchAll();
+
+        return array_map(function($user) {
+            return [
+                'id' => (int) $user['id'],
+                'name' => $user['name'],
+                'image_url' => $user['image_url'] ?? null,
+            ];
+        }, $users);
+    }
 }
