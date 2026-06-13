@@ -4,15 +4,31 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { NgOptimizedImage } from '@angular/common';
 import { UserService, TeamMember } from '../../core/services/user.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
+import { UserModalComponent } from '../../shared/user-modal/user-modal.component';
 
 @Component({
     selector: 'app-team',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [NgOptimizedImage, SmagLoaderComponent],
+    imports: [NgOptimizedImage, SmagLoaderComponent, UserModalComponent],
     template: `
     <div class="mt-6 rounded-lg bg-white px-6 py-6 shadow-md">
-      <h1 class="text-3xl font-bold mb-6">Unser Team</h1>
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Unser Team</h1>
+        @if (authService.isEditor() && !loading()) {
+          <button
+            type="button"
+            (click)="showModal.set(true)"
+            class="flex items-center gap-1 rounded-lg bg-pink-50 border border-pink-200 px-4 py-2 text-sm font-medium text-pink-700 transition-colors hover:bg-pink-100"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Neu
+          </button>
+        }
+      </div>
       
       @if (loading()) {
         <div class="flex justify-center py-12">
@@ -43,14 +59,20 @@ import { SmagLoaderComponent } from '../../shared/loader/loader.component';
         </div>
       }
     </div>
+
+    @if (showModal()) {
+      <app-user-modal (cancelled)="onModalClose()" (saved)="onUserSaved()" />
+    }
   `,
 })
 export class TeamComponent implements OnInit, OnDestroy {
     private readonly userService = inject(UserService);
+    protected readonly authService = inject(AuthService);
     private readonly destroy$ = new Subject<void>();
 
     members = signal<TeamMember[]>([]);
     loading = signal(true);
+    showModal = signal(false);
 
     ngOnInit(): void {
         this.loadUsers();
@@ -59,6 +81,15 @@ export class TeamComponent implements OnInit, OnDestroy {
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
+    }
+
+    protected onModalClose(): void {
+        this.showModal.set(false);
+    }
+
+    protected onUserSaved(): void {
+        this.onModalClose();
+        this.loadUsers();
     }
 
     private loadUsers(): void {

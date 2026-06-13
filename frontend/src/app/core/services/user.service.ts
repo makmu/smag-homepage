@@ -23,6 +23,22 @@ interface UserApiResponse {
     error: null;
 }
 
+export interface CreateUserRequest {
+    name: string;
+    email: string;
+    password: string;
+    image_url?: string;
+}
+
+export interface CreateUserApiResponse {
+    data: {
+        id: number;
+        name: string;
+        email: string;
+    } | null;
+    error: string | null;
+}
+
 function mapApiToTeamMember(item: UserApiItem): TeamMember {
     return {
         id: item.id,
@@ -40,5 +56,9 @@ export class UserService {
         return this.http.get<UserApiResponse>(`${this.apiUrl}/users`).pipe(
             map(response => response.data.items.map(mapApiToTeamMember))
         );
+    }
+
+    createUser(request: CreateUserRequest): Observable<CreateUserApiResponse> {
+        return this.http.post<CreateUserApiResponse>(`${this.apiUrl}/users`, request);
     }
 }

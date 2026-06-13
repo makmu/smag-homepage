@@ -53,4 +53,5 @@ return function (App $app): void {
 
     $userController = new UserController($userService);
     $app->get('/api/v1/users', [$userController, 'getUsers']);
+    $app->post('/api/v1/users', [$userController, 'createUser'])->add(new TokenAuthenticationMiddleware($tokenService));
 };
