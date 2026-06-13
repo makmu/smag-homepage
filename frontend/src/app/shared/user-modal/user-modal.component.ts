@@ -1,13 +1,14 @@
-import { Component, inject, signal, output, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { Component, inject, signal, output, input, computed, effect, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntil, Subject } from 'rxjs';
 import { MediaService } from '../../core/services/media.service';
-import { UserService, CreateUserRequest } from '../../core/services/user.service';
+import { UserService, CreateUserRequest, UpdateUserRequest } from '../../core/services/user.service';
+import { SmagLoaderComponent } from '../loader/loader.component';
 
 @Component({
     selector: 'app-user-modal',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [ReactiveFormsModule],
+    imports: [ReactiveFormsModule, SmagLoaderComponent],
     host: {
         '(document:keydown.escape)': 'onEscapeKey()',
     },
@@ -21,7 +22,7 @@ import { UserService, CreateUserRequest } from '../../core/services/user.service
     >
       <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
         <div class="mb-6 flex items-center justify-between">
-          <h2 id="user-modal-title" class="text-xl font-bold text-gray-800">Neuer Benutzer</h2>
+          <h2 id="user-modal-title" class="text-xl font-bold text-gray-800">{{ isEditMode() ? 'Benutzer bearbeiten' : 'Neuer Benutzer' }}</h2>
           <button
             type="button"
             (click)="cancelled.emit()"
@@ -34,6 +35,11 @@ import { UserService, CreateUserRequest } from '../../core/services/user.service
           </button>
         </div>
         
+        @if (loading()) {
+          <div class="flex justify-center py-8">
+            <smag-loader [size]="48" />
+          </div>
+        } @else {
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
           <div class="mb-4">
             <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Anzeigename *</label>
@@ -56,7 +62,7 @@ import { UserService, CreateUserRequest } from '../../core/services/user.service
           </div>
 
           <div class="mb-4">
-            <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Passwort *</label>
+            <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Passwort {{ isEditMode() ? '' : '*' }}</label>
             <input
               id="password"
               type="password"
@@ -80,7 +86,7 @@ import { UserService, CreateUserRequest } from '../../core/services/user.service
           </div>
 
           <div class="mb-4">
-            <label for="passwordConfirm" class="mb-1 block text-sm font-medium text-gray-700">Passwort bestätigen *</label>
+            <label for="passwordConfirm" class="mb-1 block text-sm font-medium text-gray-700">Passwort bestätigen {{ isEditMode() ? '' : '*' }}</label>
             <input
               id="passwordConfirm"
               type="password"
@@ -128,10 +134,10 @@ import { UserService, CreateUserRequest } from '../../core/services/user.service
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Erstelle...
+                  {{ isEditMode() ? 'Speichere...' : 'Erstelle...' }}
                 </span>
               } @else {
-                Erstellen
+                {{ isEditMode() ? 'Speichern' : 'Erstellen' }}
               }
             </button>
             <button
@@ -144,17 +150,22 @@ import { UserService, CreateUserRequest } from '../../core/services/user.service
             </button>
           </div>
         </form>
+        }
       </div>
     </div>
   `,
 })
 export class UserModalComponent implements OnDestroy {
+    userId = input<number | null>(null);
+    readonly isEditMode = computed(() => this.userId() !== null);
+    
     cancelled = output<void>();
     saved = output<void>();
 
     private readonly mediaService = inject(MediaService);
     private readonly userService = inject(UserService);
     private readonly destroy$ = new Subject<void>();
+    private loadedUserId: number | null = null;
 
     form = new FormGroup({
         name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -167,7 +178,32 @@ export class UserModalComponent implements OnDestroy {
     imageUrl = signal<string | null>(null);
     uploading = signal(false);
     saving = signal(false);
+    loading = signal(false);
     error = signal<string | null>(null);
+
+    constructor() {
+        effect(() => {
+            const id = this.userId();
+            if (id !== this.loadedUserId) {
+                this.loadedUserId = id;
+                if (id) {
+                    this.form.get('password')?.setValidators([Validators.minLength(8)]);
+                    this.form.get('password')?.updateValueAndValidity();
+                    this.form.get('passwordConfirm')?.clearValidators();
+                    this.form.get('passwordConfirm')?.updateValueAndValidity();
+                    this.loadUser(id);
+                } else {
+                    this.form.get('password')?.setValidators([Validators.required, Validators.minLength(8)]);
+                    this.form.get('password')?.updateValueAndValidity();
+                    this.form.get('passwordConfirm')?.setValidators([Validators.required]);
+                    this.form.get('passwordConfirm')?.updateValueAndValidity();
+                    this.form.reset({ name: '', email: '', password: '', passwordConfirm: '' });
+                    this.previewUrl.set(null);
+                    this.imageUrl.set(null);
+                }
+            }
+        });
+    }
 
     getPasswordStrength(): number {
         const pw = this.form.get('password')?.value ?? '';
@@ -207,6 +243,18 @@ export class UserModalComponent implements OnDestroy {
     }
 
     isSubmitEnabled(): boolean {
+        const isEdit = this.isEditMode();
+        const pw = this.form.get('password')?.value ?? '';
+        const hasPassword = pw.length > 0;
+
+        if (isEdit) {
+            return this.form.get('name')!.valid
+                && this.form.get('email')!.valid
+                && (!hasPassword || (this.form.get('password')!.valid && this.passwordsMatch()))
+                && !this.uploading()
+                && !this.saving()
+                && !this.loading();
+        }
         return this.form.valid
             && this.passwordsMatch()
             && !this.uploading()
@@ -224,6 +272,38 @@ export class UserModalComponent implements OnDestroy {
 
     onEscapeKey(): void {
         this.cancelled.emit();
+    }
+
+    private loadUser(id: number): void {
+        this.loading.set(true);
+        this.error.set(null);
+        this.userService.getUser(id).pipe(takeUntil(this.destroy$)).subscribe({
+            next: (user) => {
+                this.loading.set(false);
+                if (user) {
+                    this.form.patchValue({
+                        name: user.name,
+                        email: user.email,
+                        password: '',
+                        passwordConfirm: '',
+                    });
+                    if (user.imageUrl) {
+                        this.imageUrl.set(user.imageUrl);
+                        this.previewUrl.set(user.imageUrl);
+                    }
+                } else {
+                    this.error.set('Benutzer nicht gefunden');
+                }
+            },
+            error: (err) => {
+                this.loading.set(false);
+                if (err.error?.error) {
+                    this.error.set(err.error.error);
+                } else {
+                    this.error.set('Fehler beim Laden des Benutzers');
+                }
+            }
+        });
     }
 
     onBackdropClick(event: Event): void {
@@ -281,14 +361,21 @@ export class UserModalComponent implements OnDestroy {
         this.saving.set(true);
         this.error.set(null);
 
-        const request: CreateUserRequest = {
-            name: formValue.name,
-            email: formValue.email,
-            password: formValue.password,
-            image_url: this.imageUrl() ?? undefined,
-        };
+        const obs = this.isEditMode()
+            ? this.userService.updateUser(this.userId()!, {
+                name: formValue.name,
+                email: formValue.email,
+                password: formValue.password || undefined,
+                image_url: this.imageUrl() ?? undefined,
+            })
+            : this.userService.createUser({
+                name: formValue.name,
+                email: formValue.email,
+                password: formValue.password,
+                image_url: this.imageUrl() ?? undefined,
+            });
 
-        this.userService.createUser(request).pipe(takeUntil(this.destroy$)).subscribe({
+        obs.pipe(takeUntil(this.destroy$)).subscribe({
             next: (response) => {
                 this.saving.set(false);
                 if (response.error) {
@@ -304,7 +391,9 @@ export class UserModalComponent implements OnDestroy {
                 } else if (err.error?.error) {
                     this.error.set(err.error.error);
                 } else {
-                    this.error.set('Fehler beim Erstellen des Benutzers.');
+                    this.error.set(this.isEditMode()
+                        ? 'Fehler beim Aktualisieren des Benutzers.'
+                        : 'Fehler beim Erstellen des Benutzers.');
                 }
             }
         });

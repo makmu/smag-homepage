@@ -25,11 +25,19 @@ final class UserService
     {
         $pdo = Database::getConnection();
         
-        $stmt = $pdo->prepare('SELECT id, name, email, role, created_at, updated_at FROM users WHERE id = :id');
+        $stmt = $pdo->prepare('SELECT id, name, email, image_url, role, created_at, updated_at FROM users WHERE id = :id');
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
-        return $row !== false ? $row : null;
+        return $row !== false ? [
+            'id' => (int) $row['id'],
+            'name' => $row['name'],
+            'email' => $row['email'],
+            'image_url' => $row['image_url'] ?? null,
+            'role' => $row['role'],
+            'created_at' => $row['created_at'],
+            'updated_at' => $row['updated_at'],
+        ] : null;
     }
 
     public function verifyPassword(string $email, string $password): ?array
@@ -88,5 +96,42 @@ final class UserService
                 'image_url' => $user['image_url'] ?? null,
             ];
         }, $users);
+    }
+
+    public function updateUser(int $id, string $name, string $email, ?string $password, ?string $imageUrl): ?array
+    {
+        $pdo = Database::getConnection();
+        $now = (new \DateTime())->format('Y-m-d H:i:s');
+
+        $sets = ['name = :name', 'email = :email', 'image_url = :image_url', 'updated_at = :updated_at'];
+        $params = [
+            'name' => $name,
+            'email' => $email,
+            'image_url' => $imageUrl,
+            'updated_at' => $now,
+            'id' => $id,
+        ];
+
+        if ($password !== null && $password !== '') {
+            $sets[] = 'password = :password';
+            $params['password'] = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+        }
+
+        $sql = 'UPDATE users SET ' . implode(', ', $sets) . ' WHERE id = :id';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $this->findById($id);
+    }
+
+    public function findByEmailExcludingId(string $email, int $excludeId): ?array
+    {
+        $pdo = Database::getConnection();
+        
+        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = :email AND id != :id');
+        $stmt->execute(['email' => $email, 'id' => $excludeId]);
+        $row = $stmt->fetch();
+
+        return $row !== false ? $row : null;
     }
 }

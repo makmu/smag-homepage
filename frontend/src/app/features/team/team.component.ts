@@ -41,7 +41,19 @@ import { UserModalComponent } from '../../shared/user-modal/user-modal.component
       } @else {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           @for (member of members(); track member.id) {
-            <div class="bg-gray-100 p-6 rounded-lg shadow-sm text-center">
+            <div class="relative bg-gray-100 p-6 rounded-lg shadow-sm text-center">
+              @if (authService.isEditor()) {
+                <button
+                  type="button"
+                  (click)="openEditModal(member)"
+                  class="absolute top-2 right-2 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-colors"
+                  aria-label="Benutzer bearbeiten"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                  </svg>
+                </button>
+              }
               @if (member.imageUrl) {
                 <img 
                   [ngSrc]="member.imageUrl" 
@@ -60,8 +72,12 @@ import { UserModalComponent } from '../../shared/user-modal/user-modal.component
       }
     </div>
 
-    @if (showModal()) {
-      <app-user-modal (cancelled)="onModalClose()" (saved)="onUserSaved()" />
+    @if (showModal() || editingUserId() !== null) {
+      <app-user-modal 
+        [userId]="editingUserId()" 
+        (cancelled)="onModalClose()" 
+        (saved)="onUserSaved()" 
+      />
     }
   `,
 })
@@ -73,6 +89,7 @@ export class TeamComponent implements OnInit, OnDestroy {
     members = signal<TeamMember[]>([]);
     loading = signal(true);
     showModal = signal(false);
+    editingUserId = signal<number | null>(null);
 
     ngOnInit(): void {
         this.loadUsers();
@@ -85,6 +102,11 @@ export class TeamComponent implements OnInit, OnDestroy {
 
     protected onModalClose(): void {
         this.showModal.set(false);
+        this.editingUserId.set(null);
+    }
+
+    protected openEditModal(member: TeamMember): void {
+        this.editingUserId.set(member.id);
     }
 
     protected onUserSaved(): void {
