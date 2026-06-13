@@ -134,4 +134,20 @@ final class UserService
 
         return $row !== false ? $row : null;
     }
+
+    public function deleteUser(int $id): bool
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('DELETE FROM users WHERE id = :id');
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function countAdminUsers(): int
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM users WHERE role = :role');
+        $stmt->execute(['role' => 'admin']);
+        return (int) $stmt->fetch()['count'];
+    }
 }

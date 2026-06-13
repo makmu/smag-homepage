@@ -3,6 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { takeUntil, Subject } from 'rxjs';
 import { MediaService } from '../../core/services/media.service';
 import { UserService, CreateUserRequest, UpdateUserRequest } from '../../core/services/user.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../loader/loader.component';
 
 @Component({
@@ -123,7 +124,7 @@ import { SmagLoaderComponent } from '../loader/loader.component';
           <div class="flex gap-2">
             <button
               type="submit"
-              [disabled]="!isSubmitEnabled() || uploading() || saving()"
+              [disabled]="!isSubmitEnabled() || uploading() || saving() || deleting()"
               class="rounded bg-pink-500 px-4 py-2 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300"
             >
               @if (uploading()) {
@@ -143,11 +144,35 @@ import { SmagLoaderComponent } from '../loader/loader.component';
             <button
               type="button"
               (click)="cancelled.emit()"
-              [disabled]="uploading() || saving()"
+              [disabled]="uploading() || saving() || deleting()"
               class="rounded bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:bg-gray-200 disabled:text-gray-400"
             >
               Abbrechen
             </button>
+            @if (isEditMode() && authService.isEditor()) {
+              <button
+                type="button"
+                [class]="deleteConfirm()
+                  ? 'px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors'
+                  : 'px-4 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 font-medium transition-colors'"
+                (click)="onDeleteClick()"
+                [disabled]="uploading() || saving() || deleting()"
+              >
+                @if (deleting()) {
+                  <span class="flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Lösche...
+                  </span>
+                } @else if (deleteConfirm()) {
+                  Erneut klicken zum Bestätigen
+                } @else {
+                  Löschen
+                }
+              </button>
+            }
           </div>
         </form>
         }
@@ -164,6 +189,7 @@ export class UserModalComponent implements OnDestroy {
 
     private readonly mediaService = inject(MediaService);
     private readonly userService = inject(UserService);
+    readonly authService = inject(AuthService);
     private readonly destroy$ = new Subject<void>();
     private loadedUserId: number | null = null;
 
@@ -180,6 +206,10 @@ export class UserModalComponent implements OnDestroy {
     saving = signal(false);
     loading = signal(false);
     error = signal<string | null>(null);
+
+    deleteConfirm = signal(false);
+    deleting = signal(false);
+    private deleteTimeout: ReturnType<typeof setTimeout> | null = null;
 
     constructor() {
         effect(() => {
@@ -266,12 +296,61 @@ export class UserModalComponent implements OnDestroy {
         if (url && url.startsWith('blob:')) {
             URL.revokeObjectURL(url);
         }
+        if (this.deleteTimeout) {
+            clearTimeout(this.deleteTimeout);
+        }
         this.destroy$.next();
         this.destroy$.complete();
     }
 
     onEscapeKey(): void {
         this.cancelled.emit();
+    }
+
+    onDeleteClick(): void {
+        if (this.deleteConfirm()) {
+            this.performDelete();
+        } else {
+            this.deleteConfirm.set(true);
+            this.resetDeleteTimeout();
+        }
+    }
+
+    private resetDeleteTimeout(): void {
+        if (this.deleteTimeout) {
+            clearTimeout(this.deleteTimeout);
+        }
+        this.deleteTimeout = setTimeout(() => {
+            this.deleteConfirm.set(false);
+        }, 5000);
+    }
+
+    private performDelete(): void {
+        if (this.deleteTimeout) {
+            clearTimeout(this.deleteTimeout);
+        }
+
+        const id = this.userId();
+        if (!id) {
+            this.error.set('Benutzer nicht gefunden');
+            return;
+        }
+
+        this.deleting.set(true);
+        this.userService.deleteUser(id).pipe(takeUntil(this.destroy$)).subscribe({
+            next: (response) => {
+                this.deleting.set(false);
+                if (response.error) {
+                    this.error.set(response.error);
+                } else {
+                    this.saved.emit();
+                }
+            },
+            error: () => {
+                this.deleting.set(false);
+                this.error.set('Fehler beim Löschen des Benutzers');
+            }
+        });
     }
 
     private loadUser(id: number): void {

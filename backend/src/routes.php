@@ -56,4 +56,5 @@ return function (App $app): void {
     $app->get('/api/v1/users/{id}', [$userController, 'getUser'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->post('/api/v1/users', [$userController, 'createUser'])->add(new TokenAuthenticationMiddleware($tokenService));
     $app->put('/api/v1/users/{id}', [$userController, 'updateUser'])->add(new TokenAuthenticationMiddleware($tokenService));
+    $app->delete('/api/v1/users/{id}', [$userController, 'deleteUser'])->add(new TokenAuthenticationMiddleware($tokenService));
 };

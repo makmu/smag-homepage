@@ -53,6 +53,11 @@ export interface UpdateUserRequest {
     image_url?: string;
 }
 
+export interface DeleteUserApiResponse {
+    data: { deleted: boolean } | null;
+    error: string | null;
+}
+
 interface UserApiSingleItem {
     id: number;
     name: string;
@@ -106,5 +111,9 @@ export class UserService {
 
     updateUser(id: number, request: UpdateUserRequest): Observable<CreateUserApiResponse> {
         return this.http.put<CreateUserApiResponse>(`${this.apiUrl}/users/${id}`, request);
+    }
+
+    deleteUser(id: number): Observable<DeleteUserApiResponse> {
+        return this.http.delete<DeleteUserApiResponse>(`${this.apiUrl}/users/${id}`);
     }
 }

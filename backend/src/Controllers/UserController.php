@@ -138,6 +138,37 @@ final class UserController
         return $this->successResponse($response, $user);
     }
 
+    public function deleteUser(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $id = (int) $args['id'];
+        $role = $request->getAttribute('user_role');
+        if ($role !== 'admin') {
+            return $this->errorResponse($response, 403, 'Forbidden');
+        }
+
+        $existing = $this->userService->findById($id);
+        if ($existing === null) {
+            return $this->errorResponse($response, 404, 'User not found');
+        }
+
+        $currentUserId = (int) $request->getAttribute('user_id');
+        if ($currentUserId === $id) {
+            return $this->errorResponse($response, 400, 'You cannot delete yourself');
+        }
+
+        if ($existing['role'] === 'admin' && $this->userService->countAdminUsers() <= 1) {
+            return $this->errorResponse($response, 400, 'The last admin user cannot be deleted');
+        }
+
+        try {
+            $this->userService->deleteUser($id);
+        } catch (\Exception $e) {
+            return $this->errorResponse($response, 500, 'Failed to delete user');
+        }
+
+        return $this->successResponse($response, ['deleted' => true]);
+    }
+
     private function updateImageUrl(int $userId, string $imageUrl): void
     {
         $pdo = \App\Database\Database::getConnection();
