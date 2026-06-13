@@ -20,7 +20,7 @@ final class TokenService
         return bin2hex(random_bytes(32));
     }
 
-    public function createTokenPair(int $userId, string $role): array
+    public function createTokenPair(int $userId): array
     {
         $config = $this->getConfig();
         $pdo = Database::getConnection();
@@ -32,14 +32,13 @@ final class TokenService
         $refreshExpires = date('Y-m-d H:i:s', time() + $config['REFRESH_TOKEN_TTL']);
 
         $stmt = $pdo->prepare('
-            INSERT INTO tokens (token, user_id, role, type, expires_at)
-            VALUES (:token, :user_id, :role, :type, :expires_at)
+            INSERT INTO tokens (token, user_id, type, expires_at)
+            VALUES (:token, :user_id, :type, :expires_at)
         ');
 
         $stmt->execute([
             'token' => $accessToken,
             'user_id' => $userId,
-            'role' => $role,
             'type' => 'access',
             'expires_at' => $accessExpires,
         ]);
@@ -47,7 +46,6 @@ final class TokenService
         $stmt->execute([
             'token' => $refreshToken,
             'user_id' => $userId,
-            'role' => $role,
             'type' => 'refresh',
             'expires_at' => $refreshExpires,
         ]);
@@ -64,7 +62,7 @@ final class TokenService
         $pdo = Database::getConnection();
         
         $stmt = $pdo->prepare('
-            SELECT user_id, role, expires_at
+            SELECT user_id, expires_at
             FROM tokens
             WHERE token = :token AND type = \'access\'
         ');
@@ -82,7 +80,6 @@ final class TokenService
 
         return [
             'user_id' => (int) $row['user_id'],
-            'role' => $row['role'],
         ];
     }
 
@@ -91,7 +88,7 @@ final class TokenService
         $pdo = Database::getConnection();
         
         $stmt = $pdo->prepare('
-            SELECT user_id, role, expires_at
+            SELECT user_id, expires_at
             FROM tokens
             WHERE token = :token AND type = \'refresh\'
         ');
@@ -109,7 +106,7 @@ final class TokenService
 
         $this->invalidateToken($refreshToken);
 
-        return $this->createTokenPair((int) $row['user_id'], $row['role']);
+        return $this->createTokenPair((int) $row['user_id']);
     }
 
     public function invalidateToken(string $token): bool

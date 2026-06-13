@@ -25,7 +25,7 @@ final class UserService
     {
         $pdo = Database::getConnection();
         
-        $stmt = $pdo->prepare('SELECT id, name, email, image_url, role, created_at, updated_at FROM users WHERE id = :id');
+        $stmt = $pdo->prepare('SELECT id, name, email, image_url, created_at, updated_at FROM users WHERE id = :id');
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
@@ -34,7 +34,6 @@ final class UserService
             'name' => $row['name'],
             'email' => $row['email'],
             'image_url' => $row['image_url'] ?? null,
-            'role' => $row['role'],
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
         ] : null;
@@ -56,26 +55,24 @@ final class UserService
             'id' => (int) $user['id'],
             'name' => $user['name'],
             'email' => $user['email'],
-            'role' => $user['role'],
         ];
     }
 
-    public function createUser(string $name, string $email, string $password, string $role = 'admin'): array
+    public function createUser(string $name, string $email, string $password): array
     {
         $pdo = Database::getConnection();
         
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         
         $stmt = $pdo->prepare('
-            INSERT INTO users (name, email, password, role)
-            VALUES (:name, :email, :password, :role)
+            INSERT INTO users (name, email, password)
+            VALUES (:name, :email, :password)
         ');
         
         $stmt->execute([
             'name' => $name,
             'email' => $email,
             'password' => $hashedPassword,
-            'role' => $role,
         ]);
 
         return $this->findById((int) $pdo->lastInsertId());
@@ -141,13 +138,5 @@ final class UserService
         $stmt = $pdo->prepare('DELETE FROM users WHERE id = :id');
         $stmt->execute(['id' => $id]);
         return $stmt->rowCount() > 0;
-    }
-
-    public function countAdminUsers(): int
-    {
-        $pdo = Database::getConnection();
-        $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM users WHERE role = :role');
-        $stmt->execute(['role' => 'admin']);
-        return (int) $stmt->fetch()['count'];
     }
 }

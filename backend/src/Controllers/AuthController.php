@@ -42,7 +42,7 @@ final class AuthController
             return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
         }
 
-        $tokens = $this->tokenService->createTokenPair($user['id'], $user['role']);
+        $tokens = $this->tokenService->createTokenPair($user['id']);
 
         $payload = json_encode([
             'data' => $tokens,

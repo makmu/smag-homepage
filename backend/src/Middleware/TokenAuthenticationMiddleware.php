@@ -32,7 +32,6 @@ final class TokenAuthenticationMiddleware implements MiddlewareInterface
         }
 
         $request = $request->withAttribute('user_id', $userData['user_id']);
-        $request = $request->withAttribute('user_role', $userData['role']);
 
         return $handler->handle($request);
     }
