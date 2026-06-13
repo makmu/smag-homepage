@@ -11,3 +11,7 @@ When the operation is triggered by a button click, the button itself must show a
 ### In-Place Loading for Lists and Entities
 
 When loading lists or entities, the loading indicator should appear in place where the result will be shown in the end — not as a full-page overlay. Use a signal (e.g. `loading`) and conditionally render the loader inside the target container. See `frontend/src/app/features/events/event-list.component.ts` for a reference implementation.
+
+### Two-Click Delete Confirmation
+
+When an entity/item is to be deleted, the delete button must be clicked twice within 5 seconds to confirm the action. The first click changes the button to a confirmation state (e.g. "Erneut klicken zum Bestätigen"). If the second click does not happen within the time window, the confirmation resets. See `frontend/src/app/shared/post-modal/post-modal.component.ts` for a reference implementation.
