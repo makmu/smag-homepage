@@ -70,11 +70,19 @@ interface UserApiResponseSingle {
     error: string | null;
 }
 
+function toAbsoluteUrl(url: string | null): string | null {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    const apiPrefix = '/api/v1';
+    const cleanUrl = url.startsWith(apiPrefix) ? url.substring(apiPrefix.length) : url;
+    return environment.apiUrl + cleanUrl;
+}
+
 function mapApiToTeamMember(item: UserApiItem): TeamMember {
     return {
         id: item.id,
         name: item.name,
-        imageUrl: item.image_url,
+        imageUrl: toAbsoluteUrl(item.image_url),
     };
 }
 
@@ -101,7 +109,7 @@ export class UserService {
                         id: response.data.id,
                         name: response.data.name,
                         email: response.data.email,
-                        imageUrl: response.data.image_url,
+                        imageUrl: toAbsoluteUrl(response.data.image_url),
                     };
                 }
                 return null;

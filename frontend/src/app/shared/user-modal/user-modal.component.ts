@@ -5,6 +5,7 @@ import { MediaService } from '../../core/services/media.service';
 import { UserService, CreateUserRequest, UpdateUserRequest } from '../../core/services/user.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../loader/loader.component';
+import { environment } from '../../../environments/environment';
 
 @Component({
     selector: 'app-user-modal',
@@ -367,7 +368,10 @@ export class UserModalComponent implements OnDestroy {
                         passwordConfirm: '',
                     });
                     if (user.imageUrl) {
-                        this.imageUrl.set(user.imageUrl);
+                        const relativeUrl = user.imageUrl.startsWith(environment.apiUrl)
+                            ? user.imageUrl.substring(environment.apiUrl.length)
+                            : user.imageUrl;
+                        this.imageUrl.set(relativeUrl);
                         this.previewUrl.set(user.imageUrl);
                     }
                 } else {
