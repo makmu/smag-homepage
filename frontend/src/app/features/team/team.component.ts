@@ -56,7 +56,7 @@ import { UserModalComponent } from '../../shared/user-modal/user-modal.component
               }
               @if (member.imageUrl) {
                 <img 
-                  [ngSrc]="member.imageUrl" 
+                  [ngSrc]="member.imageUrl + '?thumbnail=true'" 
                   [alt]="member.name"
                   width="128"
                   height="128"

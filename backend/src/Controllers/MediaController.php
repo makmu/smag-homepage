@@ -65,16 +65,26 @@ final class MediaController
     {
         $id = (int) $args['id'];
 
-        $filePath = $this->fileService->getFilePath($id);
+        $media = $this->fileService->getMediaById($id);
+
+        if ($media === null) {
+            return $response->withStatus(404);
+        }
+
+        $filePath = $this->fileService->getFilePathForMedia($media);
 
         if ($filePath === null) {
             return $response->withStatus(404);
         }
 
-        $media = $this->fileService->getMediaById($id);
+        $queryParams = $request->getQueryParams();
+        $wantThumbnail = ($queryParams['thumbnail'] ?? null) === 'true';
 
-        if ($media === null) {
-            return $response->withStatus(404);
+        if ($wantThumbnail) {
+            $thumbPath = $this->fileService->getThumbnailPathForMedia($media);
+            if ($thumbPath !== null) {
+                $filePath = $thumbPath;
+            }
         }
 
         $response = $response->withHeader('Content-Type', $media['mime_type']);

@@ -31,6 +31,14 @@ final class FileService
         }
     }
 
+    public function ensureThumbsDir(): void
+    {
+        $path = $this->getUploadPath() . '/thumbs';
+        if (!is_dir($path)) {
+            mkdir($path, 0755, true);
+        }
+    }
+
     public function validateFile(array $file): ?string
     {
         if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -70,6 +78,11 @@ final class FileService
         if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
             return null;
         }
+
+        $config = self::getConfig();
+        $this->ensureThumbsDir();
+        $thumbPath = $this->getUploadPath() . '/thumbs/' . $filename;
+        $this->generateThumbnail($targetPath, $thumbPath, $config['THUMBNAIL_WIDTH'], $config['THUMBNAIL_QUALITY']);
 
         $db = $this->getDb();
         $now = (new \DateTime())->format(\DateTime::ATOM);
@@ -117,6 +130,11 @@ final class FileService
             return null;
         }
 
+        return $this->getFilePathForMedia($media);
+    }
+
+    public function getFilePathForMedia(array $media): ?string
+    {
         $path = $this->getUploadPath() . '/' . $media['filename'];
         if (!file_exists($path)) {
             return null;
@@ -128,5 +146,70 @@ final class FileService
     private function getDb(): PDO
     {
         return Database::getConnection();
+    }
+
+    public function getThumbnailPath(int $id): ?string
+    {
+        $media = $this->getMediaById($id);
+        if ($media === null) {
+            return null;
+        }
+
+        return $this->getThumbnailPathForMedia($media);
+    }
+
+    public function getThumbnailPathForMedia(array $media): ?string
+    {
+        $path = $this->getUploadPath() . '/thumbs/' . $media['filename'];
+        if (!file_exists($path)) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    private function generateThumbnail(string $sourcePath, string $targetPath, int $width, int $quality): void
+    {
+        $imageInfo = @getimagesize($sourcePath);
+        if ($imageInfo === false) {
+            return;
+        }
+
+        [$origWidth, $origHeight, $type] = $imageInfo;
+
+        if ($origWidth <= $width) {
+            copy($sourcePath, $targetPath);
+            return;
+        }
+
+        $ratio = $width / $origWidth;
+        $height = (int) ($origHeight * $ratio);
+
+        $source = match ($type) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg($sourcePath),
+            IMAGETYPE_PNG => imagecreatefrompng($sourcePath),
+            default => null,
+        };
+
+        if ($source === null) {
+            return;
+        }
+
+        $thumb = imagecreatetruecolor($width, $height);
+
+        if ($type === IMAGETYPE_PNG) {
+            imagealphablending($thumb, false);
+            imagesavealpha($thumb, true);
+        }
+
+        imagecopyresampled($thumb, $source, 0, 0, 0, 0, $width, $height, $origWidth, $origHeight);
+
+        match ($type) {
+            IMAGETYPE_JPEG => imagejpeg($thumb, $targetPath, $quality),
+            IMAGETYPE_PNG => imagepng($thumb, $targetPath),
+        };
+
+        imagedestroy($source);
+        imagedestroy($thumb);
     }
 }

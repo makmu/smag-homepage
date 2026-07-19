@@ -31,6 +31,8 @@ vi config.php
 | `TURNSTILE_ENABLED` | `false` | Enable Cloudflare Turnstile captcha for event signups |
 | `TURNSTILE_SITE_KEY` | `''` | Cloudflare Turnstile site key (get from Cloudflare dashboard) |
 | `TURNSTILE_SECRET_KEY` | `''` | Cloudflare Turnstile secret key (get from Cloudflare dashboard) |
+| `THUMBNAIL_WIDTH` | `400` | Width in pixels for generated image thumbnails |
+| `THUMBNAIL_QUALITY` | `85` | JPEG quality for thumbnails (1-100) |
 
 ## Seeding the Database
 

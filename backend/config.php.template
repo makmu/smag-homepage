@@ -21,4 +21,6 @@ return [
     'TURNSTILE_SECRET_KEY' => '',
     'IONOS_MAILING_LIST_ENDPOINT' => 'https://ml.kundenserver.de/cgi-bin/mailinglist.cgi',
     'IONOS_MAILING_LIST_EMAIL' => 'smag-gruppe@fliederlich.de',
+    'THUMBNAIL_WIDTH' => 400,
+    'THUMBNAIL_QUALITY' => 85,
 ];
