@@ -48,7 +48,7 @@ interface Pagination {
             <div class="group relative rounded-lg bg-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
               <a [routerLink]="['/gallery', post.id]" class="block">
                 <img 
-                  [ngSrc]="post.thumbnailUrl" 
+                  [ngSrc]="post.thumbnailUrl + '?thumbnail=true'" 
                   [alt]="post.title"
                   width="400"
                   height="300"
