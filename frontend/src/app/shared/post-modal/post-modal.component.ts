@@ -2,7 +2,7 @@ import { Component, inject, signal, output, input, ChangeDetectionStrategy, effe
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { takeUntil, Subject } from 'rxjs';
 import { MediaService, MediaUploadResponse } from '../../core/services/media.service';
-import { PostService, AddPostRequest, UpdatePostRequest, PostFormData } from '../../core/services/post.service';
+import { PostService, AddPostRequest, UpdatePostRequest, PostFormData, toRelativeThumbnailUrl } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { EditablePost } from './post-helpers';
 
@@ -269,9 +269,12 @@ export class PostModalComponent implements OnDestroy {
 
         if (isEdit) {
             if (newThumbnailId !== null) {
-                (request as AddPostRequest).thumbnail_id = newThumbnailId;
-            } else if (this.existingThumbnailUrl()) {
-                request.thumbnail_url = this.existingThumbnailUrl()!;
+                request.thumbnail_id = newThumbnailId;
+            } else {
+                const existingUrl = this.existingThumbnailUrl();
+                if (existingUrl) {
+                    request.thumbnail_url = toRelativeThumbnailUrl(existingUrl);
+                }
             }
             this.postService.updatePost(this.editablePost()!.id, request).pipe(takeUntil(this.destroy$)).subscribe({
                 next: (response) => {

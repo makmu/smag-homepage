@@ -61,19 +61,27 @@ export interface UpdatePostRequest {
 
 export type PostFormData = AddPostRequest | UpdatePostRequest;
 
-function mapApiToPost(item: PostApiItem): Post {
-    const thumbUrl = item.thumbnail_url;
-    const fullUrl = thumbUrl.startsWith('http')
-        ? thumbUrl
-        : environment.apiUrl + thumbUrl;
+function toFullThumbnailUrl(thumbUrl: string): string {
+    return thumbUrl.startsWith('http') ? thumbUrl : environment.apiUrl + thumbUrl;
+}
 
+function mapApiToPost(item: PostApiItem): Post {
     return {
         id: item.id,
-        thumbnailUrl: fullUrl,
+        thumbnailUrl: toFullThumbnailUrl(item.thumbnail_url),
         title: item.title,
         caption: item.caption,
         date: item.date,
     };
+}
+
+export function toRelativeThumbnailUrl(url: string): string {
+    if (url.startsWith(environment.apiUrl)) {
+        return url.slice(environment.apiUrl.length);
+    }
+
+    const mediaIndex = url.lastIndexOf('/media/');
+    return mediaIndex !== -1 ? url.slice(mediaIndex) : url;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -99,14 +107,10 @@ export class PostService {
             map(response => {
                 if (response.data) {
                     const p = response.data;
-                    const thumbUrl = p.thumbnail_url;
-                    const fullUrl = thumbUrl.startsWith('http')
-                        ? thumbUrl
-                        : environment.apiUrl + thumbUrl;
 
                     return {
                         id: p.id,
-                        thumbnailUrl: fullUrl,
+                        thumbnailUrl: toFullThumbnailUrl(p.thumbnail_url),
                         title: p.title,
                         caption: p.caption,
                         date: p.date,
