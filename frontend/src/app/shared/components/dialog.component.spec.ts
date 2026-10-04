@@ -11,6 +11,7 @@ import { SmagDialogComponent } from './dialog.component';
 
         @if (open()) {
             <smag-dialog [heading]="'Dialogtitel'" [busy]="busy()" (close)="open.set(false)">
+                <iframe title="Widget" src="about:blank" class="widget-frame"></iframe>
                 <button type="button" class="first-action">Erste Aktion</button>
                 <button type="button" class="last-action">Letzte Aktion</button>
             </smag-dialog>
@@ -168,6 +169,22 @@ describe('SmagDialogComponent', () => {
             press('Tab');
 
             expect(document.activeElement).toBe(closeButton());
+        });
+
+        it('keeps embedded widgets (iframes) reachable with the keyboard', async () => {
+            const overlay = await openDialog();
+            const frame = overlay.querySelector<HTMLIFrameElement>('iframe');
+            expect(frame).not.toBeNull();
+
+            closeButton().focus();
+            press('Tab');
+            expect(document.activeElement).toBe(frame);
+
+            press('Tab');
+            expect(document.activeElement).toBe(overlay.querySelector('.first-action'));
+
+            press('Tab', true);
+            expect(document.activeElement).toBe(frame);
         });
 
         it('pulls focus back when it leaves the dialog outside of Tab', async () => {

@@ -13,13 +13,19 @@ import { DialogLayerService } from './dialog-layer.service';
 
 let dialogCount = 0;
 
-/** Everything inside a dialog that can receive keyboard focus. */
+/**
+ * Everything inside a dialog that can receive keyboard focus. `iframe` matters for
+ * embedded widgets such as Cloudflare Turnstile: they render their challenge in a
+ * cross-frame document that is natively tabbable, and keyboard users must be able
+ * to reach it (WCAG 2.1.1) — for example to tick an interactive challenge.
+ */
 const FOCUSABLE_SELECTOR = [
     'a[href]',
     'button:not([disabled])',
     'input:not([disabled]):not([type="hidden"])',
     'select:not([disabled])',
     'textarea:not([disabled])',
+    'iframe',
     '[contenteditable="true"]',
     '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
