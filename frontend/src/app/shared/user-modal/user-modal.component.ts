@@ -5,180 +5,160 @@ import { MediaService } from '../../core/services/media.service';
 import { UserService, CreateUserRequest, UpdateUserRequest } from '../../core/services/user.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../loader/loader.component';
+import { SmagDialogComponent } from '../components/dialog.component';
 import { environment } from '../../../environments/environment';
 
 @Component({
     selector: 'app-user-modal',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [ReactiveFormsModule, SmagLoaderComponent],
-    host: {
-        '(document:keydown.escape)': 'onEscapeKey()',
-    },
+    imports: [ReactiveFormsModule, SmagLoaderComponent, SmagDialogComponent],
     template: `
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      (click)="onBackdropClick($event)"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="user-modal-title"
+    <smag-dialog
+      [heading]="isEditMode() ? 'Benutzer bearbeiten' : 'Neuer Benutzer'"
+      [busy]="uploading() || saving() || loading() || deleting()"
+      (close)="cancelled.emit()"
     >
-      <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-        <div class="mb-6 flex items-center justify-between">
-          <h2 id="user-modal-title" class="text-xl font-bold text-gray-800">{{ isEditMode() ? 'Benutzer bearbeiten' : 'Neuer Benutzer' }}</h2>
+      @if (loading()) {
+        <div class="flex justify-center py-8">
+          <smag-loader [size]="48" />
+        </div>
+      } @else {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="mb-4">
+          <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Anzeigename *</label>
+          <input
+            id="name"
+            type="text"
+            formControlName="name"
+            class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label for="email" class="mb-1 block text-sm font-medium text-gray-700">E-Mail-Adresse *</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+          />
+        </div>
+
+        <div class="mb-4">
+          <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Passwort {{ isEditMode() ? '' : '*' }}</label>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+          />
+          @if (form.get('password')?.value) {
+            <div class="mt-2">
+              <div class="flex items-center gap-2">
+                <div class="h-2 flex-1 rounded-full bg-gray-200">
+                  <div
+                    class="h-full rounded-full transition-all duration-300"
+                    [class]="getPasswordStrengthBarClass()"
+                    [style.width.%]="getPasswordStrengthPercent()"
+                  ></div>
+                </div>
+                <span class="text-xs text-gray-500">{{ getPasswordStrengthLabel() }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="mb-4">
+          <label for="passwordConfirm" class="mb-1 block text-sm font-medium text-gray-700">Passwort bestätigen {{ isEditMode() ? '' : '*' }}</label>
+          <input
+            id="passwordConfirm"
+            type="password"
+            formControlName="passwordConfirm"
+            class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+          />
+          @if (form.get('passwordConfirm')?.value && !passwordsMatch()) {
+            <p class="mt-1 text-xs text-red-500">Passwörter stimmen nicht überein</p>
+          }
+        </div>
+
+        <div class="mb-4">
+          <label for="avatar" class="mb-1 block text-sm font-medium text-gray-700">Avatar (optional)</label>
+          <input
+            id="avatar"
+            type="file"
+            accept="image/jpeg,image/png"
+            (change)="onFileSelect($event)"
+            class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+          />
+          <p class="mt-1 text-xs text-gray-500">JPEG oder PNG, max. 1 MiB</p>
+          
+          @if (previewUrl()) {
+            <div class="mt-2">
+              <img [src]="previewUrl()" alt="Vorschau" class="h-32 w-full rounded object-cover" />
+            </div>
+          }
+        </div>
+
+        @if (error()) {
+          <p class="mb-4 text-sm text-red-500">{{ error() }}</p>
+        }
+
+        <div class="flex gap-2">
+          <button
+            type="submit"
+            [disabled]="!isSubmitEnabled() || uploading() || saving() || deleting()"
+            class="rounded bg-pink-500 px-4 py-2 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300"
+          >
+            @if (uploading()) {
+              Wird hochgeladen...
+            } @else if (saving()) {
+              <span class="flex items-center gap-2">
+                <svg aria-hidden="true" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isEditMode() ? 'Speichere...' : 'Erstelle...' }}
+              </span>
+            } @else {
+              {{ isEditMode() ? 'Speichern' : 'Erstellen' }}
+            }
+          </button>
           <button
             type="button"
             (click)="cancelled.emit()"
-            class="text-gray-400 hover:text-gray-600"
-            aria-label="Schließen"
+            [disabled]="uploading() || saving() || deleting()"
+            class="rounded bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:bg-gray-200 disabled:text-gray-400"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            Abbrechen
           </button>
-        </div>
-        
-        @if (loading()) {
-          <div class="flex justify-center py-8">
-            <smag-loader [size]="48" />
-          </div>
-        } @else {
-        <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <div class="mb-4">
-            <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Anzeigename *</label>
-            <input
-              id="name"
-              type="text"
-              formControlName="name"
-              class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-            />
-          </div>
-
-          <div class="mb-4">
-            <label for="email" class="mb-1 block text-sm font-medium text-gray-700">E-Mail-Adresse *</label>
-            <input
-              id="email"
-              type="email"
-              formControlName="email"
-              class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-            />
-          </div>
-
-          <div class="mb-4">
-            <label for="password" class="mb-1 block text-sm font-medium text-gray-700">Passwort {{ isEditMode() ? '' : '*' }}</label>
-            <input
-              id="password"
-              type="password"
-              formControlName="password"
-              class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-            />
-            @if (form.get('password')?.value) {
-              <div class="mt-2">
-                <div class="flex items-center gap-2">
-                  <div class="h-2 flex-1 rounded-full bg-gray-200">
-                    <div
-                      class="h-full rounded-full transition-all duration-300"
-                      [class]="getPasswordStrengthBarClass()"
-                      [style.width.%]="getPasswordStrengthPercent()"
-                    ></div>
-                  </div>
-                  <span class="text-xs text-gray-500">{{ getPasswordStrengthLabel() }}</span>
-                </div>
-              </div>
-            }
-          </div>
-
-          <div class="mb-4">
-            <label for="passwordConfirm" class="mb-1 block text-sm font-medium text-gray-700">Passwort bestätigen {{ isEditMode() ? '' : '*' }}</label>
-            <input
-              id="passwordConfirm"
-              type="password"
-              formControlName="passwordConfirm"
-              class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-            />
-            @if (form.get('passwordConfirm')?.value && !passwordsMatch()) {
-              <p class="mt-1 text-xs text-red-500">Passwörter stimmen nicht überein</p>
-            }
-          </div>
-
-          <div class="mb-4">
-            <label for="avatar" class="mb-1 block text-sm font-medium text-gray-700">Avatar (optional)</label>
-            <input
-              id="avatar"
-              type="file"
-              accept="image/jpeg,image/png"
-              (change)="onFileSelect($event)"
-              class="w-full rounded border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-            />
-            <p class="mt-1 text-xs text-gray-500">JPEG oder PNG, max. 1 MiB</p>
-            
-            @if (previewUrl()) {
-              <div class="mt-2">
-                <img [src]="previewUrl()" alt="Vorschau" class="h-32 w-full rounded object-cover" />
-              </div>
-            }
-          </div>
-
-          @if (error()) {
-            <p class="mb-4 text-sm text-red-500">{{ error() }}</p>
-          }
-
-          <div class="flex gap-2">
+          @if (isEditMode() && authService.isEditor()) {
             <button
-              type="submit"
-              [disabled]="!isSubmitEnabled() || uploading() || saving() || deleting()"
-              class="rounded bg-pink-500 px-4 py-2 text-white transition-colors hover:bg-pink-600 disabled:bg-gray-300"
+              type="button"
+              [class]="deleteConfirm()
+                ? 'px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors'
+                : 'px-4 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 font-medium transition-colors'"
+              (click)="onDeleteClick()"
+              [disabled]="uploading() || saving() || deleting()"
             >
-              @if (uploading()) {
-                Wird hochgeladen...
-              } @else if (saving()) {
+              @if (deleting()) {
                 <span class="flex items-center gap-2">
-                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg aria-hidden="true" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {{ isEditMode() ? 'Speichere...' : 'Erstelle...' }}
+                  Lösche...
                 </span>
+              } @else if (deleteConfirm()) {
+                Erneut klicken zum Bestätigen
               } @else {
-                {{ isEditMode() ? 'Speichern' : 'Erstellen' }}
+                Löschen
               }
             </button>
-            <button
-              type="button"
-              (click)="cancelled.emit()"
-              [disabled]="uploading() || saving() || deleting()"
-              class="rounded bg-gray-200 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-300 disabled:bg-gray-200 disabled:text-gray-400"
-            >
-              Abbrechen
-            </button>
-            @if (isEditMode() && authService.isEditor()) {
-              <button
-                type="button"
-                [class]="deleteConfirm()
-                  ? 'px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium transition-colors'
-                  : 'px-4 py-2 border border-red-300 text-red-600 rounded-md hover:bg-red-50 font-medium transition-colors'"
-                (click)="onDeleteClick()"
-                [disabled]="uploading() || saving() || deleting()"
-              >
-                @if (deleting()) {
-                  <span class="flex items-center gap-2">
-                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Lösche...
-                  </span>
-                } @else if (deleteConfirm()) {
-                  Erneut klicken zum Bestätigen
-                } @else {
-                  Löschen
-                }
-              </button>
-            }
-          </div>
-        </form>
-        }
-      </div>
-    </div>
+          }
+        </div>
+      </form>
+      }
+    </smag-dialog>
   `,
 })
 export class UserModalComponent implements OnDestroy {
@@ -304,10 +284,6 @@ export class UserModalComponent implements OnDestroy {
         this.destroy$.complete();
     }
 
-    onEscapeKey(): void {
-        this.cancelled.emit();
-    }
-
     onDeleteClick(): void {
         if (this.deleteConfirm()) {
             this.performDelete();
@@ -387,12 +363,6 @@ export class UserModalComponent implements OnDestroy {
                 }
             }
         });
-    }
-
-    onBackdropClick(event: Event): void {
-        if (event.target === event.currentTarget) {
-            this.cancelled.emit();
-        }
     }
 
     onFileSelect(event: Event): void {

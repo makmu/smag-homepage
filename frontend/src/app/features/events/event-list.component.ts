@@ -19,7 +19,7 @@ import { reloadWhenIdle } from '../../shared/utils/resource.utils';
       <h2 class="text-2xl font-bold text-gray-800">Veranstaltungen</h2>
       @if (authService.isEditor() && !loading()) {
         <button type="button" (click)="showAddModal.set(true)" class="flex items-center gap-1 rounded-lg bg-pink-50 border border-pink-200 px-4 py-2 text-sm font-medium text-pink-700 transition-colors hover:bg-pink-100">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
           </svg>
           Neu
@@ -47,7 +47,7 @@ import { reloadWhenIdle } from '../../shared/utils/resource.utils';
                 class="absolute top-2 right-2 md:top-4 md:right-4 p-2 rounded-full bg-white/80 hover:bg-white shadow-sm transition-colors"
                 aria-label="Veranstaltung bearbeiten"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                 </svg>
               </button>

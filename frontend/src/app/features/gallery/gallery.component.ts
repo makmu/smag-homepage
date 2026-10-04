@@ -57,10 +57,10 @@ import { reloadWhenIdle } from '../../shared/utils/resource.utils';
                 <button
                   type="button"
                   (click)="openEditModal(post)"
-                  class="absolute top-2 right-2 rounded-full bg-white p-2 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-pink-50"
+                  class="absolute top-2 right-2 rounded-full bg-white p-2 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:bg-pink-50"
                   aria-label="Beitrag bearbeiten"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
+                  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
                 </button>
