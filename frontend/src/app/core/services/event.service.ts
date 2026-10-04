@@ -229,22 +229,17 @@ export class EventService {
         return this.http.post<SignupResponse>(`${this.apiUrl}/events/${eventId}/signups`, request);
     }
 
-    downloadSignupsCsv(eventId: number, token: string): Observable<Blob> {
+    downloadSignupsCsv(eventId: number): Observable<Blob> {
         return this.http.get(`${this.apiUrl}/events/${eventId}/signups/csv`, {
-            responseType: 'blob',
-            headers: { Authorization: `Bearer ${token}` }
+            responseType: 'blob'
         });
     }
 
-    getSignupDetail(eventId: number, signupId: number, token: string): Observable<SignupDetailResponse> {
-        return this.http.get<SignupDetailResponse>(`${this.apiUrl}/events/${eventId}/signups/${signupId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+    getSignupDetail(eventId: number, signupId: number): Observable<SignupDetailResponse> {
+        return this.http.get<SignupDetailResponse>(`${this.apiUrl}/events/${eventId}/signups/${signupId}`);
     }
 
-    deleteSignup(eventId: number, signupId: number, token: string): Observable<{ data: { deleted: boolean } | null; error: string | null }> {
-        return this.http.delete<{ data: { deleted: boolean } | null; error: string | null }>(`${this.apiUrl}/events/${eventId}/signups/${signupId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+    deleteSignup(eventId: number, signupId: number): Observable<{ data: { deleted: boolean } | null; error: string | null }> {
+        return this.http.delete<{ data: { deleted: boolean } | null; error: string | null }>(`${this.apiUrl}/events/${eventId}/signups/${signupId}`);
     }
 }
