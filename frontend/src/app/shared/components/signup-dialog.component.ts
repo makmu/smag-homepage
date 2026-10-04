@@ -4,163 +4,143 @@ import { EventSignup } from '../../features/events/event-detail.component';
 import { EventService, SignupRequest } from '../../core/services/event.service';
 import { environment } from '../../../environments/environment';
 import { TurnstileComponent } from '../../shared/components/turnstile.component';
+import { SmagDialogComponent } from './dialog.component';
 
 @Component({
     selector: 'app-signup-dialog',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [FormsModule, TurnstileComponent],
+    imports: [FormsModule, TurnstileComponent, SmagDialogComponent],
     template: `
-        <div 
-            class="fixed inset-0 z-50 flex items-center justify-center p-4"
-            (click)="onBackdropClick($event)"
+        <smag-dialog
+            [heading]="'Anmeldung'"
+            [maxWidth]="'md'"
+            [busy]="isSubmitting()"
+            (close)="onClose()"
         >
-            <!-- Backdrop -->
-            <div class="fixed inset-0 bg-black bg-opacity-50"></div>
-            
-            <!-- Dialog -->
-            <div 
-                class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-10"
-                (click)="$event.stopPropagation()"
-            >
-                <!-- Close button -->
-                <button 
-                    type="button"
-                    class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                    (click)="onClose()"
-                    [disabled]="isSubmitting()"
-                >
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+            @if (success()) {
+                <div class="mb-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
+                    <p class="text-green-800 font-medium">Du bist angemeldet!</p>
+                    <p class="text-sm text-green-700 mt-1">Eine Bestätigung wurde an {{ email }} gesendet.</p>
+                </div>
+                <div class="flex justify-end">
+                    <button 
+                        type="button"
+                        class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors"
+                        (click)="onClose()"
+                    >
+                        Schließen
+                    </button>
+                </div>
+            } @else {
+                @if (error()) {
+                    <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
+                        <p class="text-red-800">{{ error() }}</p>
+                    </div>
+                }
                 
-                <h2 class="text-xl font-bold text-gray-900 mb-4">Anmeldung</h2>
-
-                @if (success()) {
-                    <div class="mb-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-r">
-                        <p class="text-green-800 font-medium">Du bist angemeldet!</p>
-                        <p class="text-sm text-green-700 mt-1">Eine Bestätigung wurde an {{ email }} gesendet.</p>
-                    </div>
-                    <div class="flex justify-end">
-                        <button 
-                            type="button"
-                            class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors"
-                            (click)="onClose()"
-                        >
-                            Schließen
-                        </button>
-                    </div>
-                } @else {
-                    @if (error()) {
-                        <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-400 rounded-r">
-                            <p class="text-red-800">{{ error() }}</p>
+                <form (ngSubmit)="onSubmit()">
+                    <!-- Name field -->
+                    <div class="mb-4">
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                            Name *
+                        </label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            [(ngModel)]="name" 
+                            name="name"
+                            required
+                            [disabled]="isSubmitting()"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm p-2 border disabled:bg-gray-100"
+                            placeholder="Dein Name"
+                        />
+                        <!-- Public notice for name -->
+                        <div class="mt-2 p-2 bg-amber-50 border-l-4 border-amber-400 rounded-r">
+                            <p class="text-xs text-amber-800">
+                                <strong>Hinweis:</strong> Dieser Name wird öffentlich auf der Website angezeigt.
+                            </p>
                         </div>
-                    }
+                    </div>
                     
-                    <form (ngSubmit)="onSubmit()">
-                        <!-- Name field -->
-                        <div class="mb-4">
-                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-                                Name *
-                            </label>
-                            <input 
-                                type="text" 
-                                id="name" 
-                                [(ngModel)]="name" 
-                                name="name"
-                                required
-                                [disabled]="isSubmitting()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm p-2 border disabled:bg-gray-100"
-                                placeholder="Dein Name"
-                            />
-                            <!-- Public notice for name -->
+                    <!-- Email field -->
+                    <div class="mb-4">
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                            E-Mail-Adresse *
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            [(ngModel)]="email" 
+                            name="email"
+                            required
+                            [disabled]="isSubmitting()"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm p-2 border disabled:bg-gray-100"
+                            placeholder="deine@email.de"
+                        />
+                        <!-- Email privacy notice -->
+                        <div class="mt-2 p-2 bg-blue-50 border-l-4 border-blue-400 rounded-r">
+                            <p class="text-xs text-blue-800">
+                                <strong>Hinweis:</strong> Deine E-Mail-Adresse ist nur für die Teamer sichtbar und wird nicht öffentlich angezeigt.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Comment field -->
+                    <div class="mb-4">
+                        <label for="comment" class="block text-sm font-medium text-gray-700 mb-1">
+                            Kommentar (optional)
+                        </label>
+                        <textarea 
+                            id="comment" 
+                            [(ngModel)]="comment" 
+                            name="comment"
+                            rows="3"
+                            [disabled]="isSubmitting()"
+                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm p-2 border disabled:bg-gray-100"
+                            placeholder="z.B. Ich komme 15 min. später"
+                        ></textarea>
+                        <!-- Public notice for comment -->
+                        @if (comment) {
                             <div class="mt-2 p-2 bg-amber-50 border-l-4 border-amber-400 rounded-r">
                                 <p class="text-xs text-amber-800">
-                                    <strong>Hinweis:</strong> Dieser Name wird öffentlich auf der Website angezeigt.
+                                    <strong>Hinweis:</strong> Dieser Kommentar wird öffentlich auf der Website angezeigt.
                                 </p>
                             </div>
-                        </div>
-                        
-                        <!-- Email field -->
-                        <div class="mb-4">
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                                E-Mail-Adresse *
-                            </label>
-                            <input 
-                                type="email" 
-                                id="email" 
-                                [(ngModel)]="email" 
-                                name="email"
-                                required
-                                [disabled]="isSubmitting()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm p-2 border disabled:bg-gray-100"
-                                placeholder="deine@email.de"
-                            />
-                            <!-- Email privacy notice -->
-                            <div class="mt-2 p-2 bg-blue-50 border-l-4 border-blue-400 rounded-r">
-                                <p class="text-xs text-blue-800">
-                                    <strong>Hinweis:</strong> Deine E-Mail-Adresse ist nur für die Teamer sichtbar und wird nicht öffentlich angezeigt.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <!-- Comment field -->
-                        <div class="mb-4">
-                            <label for="comment" class="block text-sm font-medium text-gray-700 mb-1">
-                                Kommentar (optional)
-                            </label>
-                            <textarea 
-                                id="comment" 
-                                [(ngModel)]="comment" 
-                                name="comment"
-                                rows="3"
-                                [disabled]="isSubmitting()"
-                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm p-2 border disabled:bg-gray-100"
-                                placeholder="z.B. Ich komme 15 min. später"
-                            ></textarea>
-                            <!-- Public notice for comment -->
-                            @if (comment) {
-                                <div class="mt-2 p-2 bg-amber-50 border-l-4 border-amber-400 rounded-r">
-                                    <p class="text-xs text-amber-800">
-                                        <strong>Hinweis:</strong> Dieser Kommentar wird öffentlich auf der Website angezeigt.
-                                    </p>
-                                </div>
-                            }
-                        </div>
-                        
-                        <!-- Turnstile widget -->
-                        @if (hasTurnstile) {
-                            <app-turnstile [siteKey]="turnstileSiteKey" (tokenChange)="onTokenChange($event)" />
                         }
-                        
-                        <!-- Buttons -->
-                        <div class="flex justify-end gap-3 mt-6">
-                            <button 
-                                type="button"
-                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
-                                (click)="close.emit()"
-                                [disabled]="isSubmitting()"
-                            >
-                                Abbrechen
-                            </button>
-                            <button 
-                                type="submit"
-                                [disabled]="!name || !email || isSubmitting() || (hasTurnstile && !turnstileToken())"
-                                class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                @if (isSubmitting()) {
-                                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                }
-                                Anmelden
-                            </button>
-                        </div>
-                    </form>
-                }
-            </div>
-        </div>
+                    </div>
+                    
+                    <!-- Turnstile widget -->
+                    @if (hasTurnstile) {
+                        <app-turnstile [siteKey]="turnstileSiteKey" (tokenChange)="onTokenChange($event)" />
+                    }
+                    
+                    <!-- Buttons -->
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button 
+                            type="button"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
+                            (click)="close.emit()"
+                            [disabled]="isSubmitting()"
+                        >
+                            Abbrechen
+                        </button>
+                        <button 
+                            type="submit"
+                            [disabled]="!name || !email || isSubmitting() || (hasTurnstile && !turnstileToken())"
+                            class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            @if (isSubmitting()) {
+                                <svg aria-hidden="true" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            }
+                            Anmelden
+                        </button>
+                    </div>
+                </form>
+            }
+        </smag-dialog>
     `
 })
 export class SignupDialogComponent {
@@ -186,12 +166,6 @@ export class SignupDialogComponent {
         this.turnstileToken.set(token);
     }
     
-    onBackdropClick(event: MouseEvent): void {
-        if ((event.target as HTMLElement).classList.contains('fixed') && !this.isSubmitting()) {
-            this.close.emit();
-        }
-    }
-
     onClose(): void {
         this.close.emit();
     }

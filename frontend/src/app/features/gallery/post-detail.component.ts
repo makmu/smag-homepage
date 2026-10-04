@@ -29,7 +29,7 @@ import { reloadWhenIdle } from '../../shared/utils/resource.utils';
             class="p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-colors"
             aria-label="Beitrag bearbeiten"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 hover:text-pink-600" viewBox="0 0 20 20" fill="currentColor">
               <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
             </svg>
           </button>
@@ -56,20 +56,22 @@ import { reloadWhenIdle } from '../../shared/utils/resource.utils';
             @if (post()?.prevPostId || post()?.nextPostId) {
               <div class="gallery-nav-overlay absolute inset-0 pointer-events-none">
                 @if (post()?.prevPostId) {
-                  <a [routerLink]="['/gallery', post()!.prevPostId]" 
-                     class="nav-prev absolute left-0 top-0 bottom-0 w-[15%] md:w-[10%] flex items-center justify-start pl-4 md:pl-3 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                  <a [routerLink]="['/gallery', post()!.prevPostId]"
+                     aria-label="Vorheriger Beitrag"
+                     class="nav-prev absolute left-0 top-0 bottom-0 w-[15%] md:w-[10%] flex items-center justify-start pl-4 md:pl-3 pointer-events-auto opacity-0 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer">
                     <div class="rounded-full bg-black/40 p-2 md:p-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                       </svg>
                     </div>
                   </a>
                 }
                 @if (post()?.nextPostId) {
-                  <a [routerLink]="['/gallery', post()!.nextPostId]" 
-                     class="nav-next absolute right-0 top-0 bottom-0 w-[15%] md:w-[10%] flex items-center justify-end pr-4 md:pr-3 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+                  <a [routerLink]="['/gallery', post()!.nextPostId]"
+                     aria-label="Nächster Beitrag"
+                     class="nav-next absolute right-0 top-0 bottom-0 w-[15%] md:w-[10%] flex items-center justify-end pr-4 md:pr-3 pointer-events-auto opacity-0 hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 cursor-pointer">
                     <div class="rounded-full bg-black/40 p-2 md:p-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
