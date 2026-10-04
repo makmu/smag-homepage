@@ -1,4 +1,5 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NewsletterService } from '../../core/services/newsletter.service';
 import { environment } from '../../../environments/environment';
@@ -115,6 +116,7 @@ import { TurnstileComponent } from '../../shared/components/turnstile.component'
 })
 export class NewsletterComponent {
     private readonly newsletterService = inject(NewsletterService);
+    private readonly destroyRef = inject(DestroyRef);
     readonly turnstileSiteKey: string = environment.turnstileSiteKey;
     get hasTurnstile(): boolean { return !!this.turnstileSiteKey; }
 
@@ -155,7 +157,7 @@ export class NewsletterComponent {
             ? this.newsletterService.subscribe(this.email, this.emailConfirmation, this.turnstileToken() || undefined)
             : this.newsletterService.unsubscribe(this.email, this.emailConfirmation, this.turnstileToken() || undefined);
 
-        request$.subscribe({
+        request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (response) => {
                 this.isSubmitting.set(false);
                 if (response.data?.message) {

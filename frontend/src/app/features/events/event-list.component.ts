@@ -1,12 +1,14 @@
-import { Component, signal, effect, inject, computed } from '@angular/core';
+import { Component, signal, inject, computed } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { RAINBOW_COLORS } from '../../core/constants/theme-colors';
-import { EventService, Event } from '../../core/services/event.service';
+import { EventService, Event, parseEvents } from '../../core/services/event.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { EventModalComponent } from '../../shared/event-modal/event-modal.component';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
+import { reloadWhenIdle } from '../../shared/utils/resource.utils';
 
 @Component({
     selector: 'app-event-list',
@@ -101,16 +103,23 @@ export class EventListComponent {
 
     private readonly eventService = inject(EventService);
 
-    events = signal<Event[]>([]);
-    loading = signal(true);
+    /**
+     * The `include_past` param is derived from the auth signal on purpose: logging in or
+     * out changes the URL and therefore refetches the list.
+     */
+    private readonly eventsResource = httpResource<Event[]>(
+        () => this.eventService.eventsUrl(this.authService.isLoggedIn()),
+        { parse: parseEvents },
+    );
+
+    protected readonly events = computed(() =>
+        this.eventsResource.hasValue() ? (this.eventsResource.value() ?? []) : []
+    );
+    protected readonly loading = computed(() => this.eventsResource.isLoading());
+    /** Refetches after a mutation, waiting for a pending request instead of being dropped. */
+    private readonly reloadEvents = reloadWhenIdle(this.eventsResource);
     showAddModal = signal(false);
     editingEventId = signal<number | null>(null);
-
-    constructor() {
-        effect(() => {
-            this.loadEvents();
-        });
-    }
 
     protected openEditModal(event: Event): void {
         this.editingEventId.set(event.id);
@@ -123,19 +132,6 @@ export class EventListComponent {
 
     protected onEventSaved(): void {
         this.onModalClose();
-        this.loadEvents();
-    }
-
-    private loadEvents(): void {
-        this.loading.set(true);
-        this.eventService.getEvents().subscribe({
-            next: (data) => {
-                this.events.set(data);
-                this.loading.set(false);
-            },
-            error: () => {
-                this.loading.set(false);
-            }
-        });
+        this.reloadEvents();
     }
 }

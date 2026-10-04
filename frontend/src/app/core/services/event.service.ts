@@ -1,10 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { SignupType } from '../../shared/event-modal/event-modal.component';
-import { AuthService } from '../auth/auth.service';
 
 interface EventApiItem {
     id: number;
@@ -175,23 +174,40 @@ function mapApiToFullEvent(item: EventApiFullItem): Event {
     };
 }
 
+/**
+ * Transforms a raw `GET /events` body into the list shown on the landing page.
+ * Used as the `parse` option of an `httpResource`.
+ */
+export function parseEvents(body: unknown): Event[] {
+    const response = body as EventApiResponse;
+    return response.data.items.map(mapApiToEvent);
+}
+
+/**
+ * Transforms a raw `GET /events/:id` body into an event, or `null` when the backend
+ * reports no such event. Used as the `parse` option of an `httpResource`.
+ */
+export function parseEventDetail(body: unknown): Event | null {
+    const response = body as EventApiResponseSingle;
+    return response.data ? mapApiToFullEvent(response.data) : null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EventService {
     private readonly http = inject(HttpClient);
-    private readonly auth = inject(AuthService);
     private readonly apiUrl = environment.apiUrl;
 
-    getEvents(): Observable<Event[]> {
-        const showAll = this.auth.isLoggedIn();
-        const params = new HttpParams().set('include_past', showAll ? 'true' : 'false');
-        
-        return this.http.get<EventApiResponse>(`${this.apiUrl}/events`, { params }).pipe(
-            map(response => response.data.items.map(mapApiToEvent))
-        );
+    /** `includePast` must be derived from an explicit signal read at the call site. */
+    eventsUrl(includePast: boolean): string {
+        return `${this.apiUrl}/events?include_past=${includePast ? 'true' : 'false'}`;
+    }
+
+    eventUrl(id: number): string {
+        return `${this.apiUrl}/events/${id}`;
     }
 
     getEvent(id: number): Observable<Event | null> {
-        return this.http.get<{ data: EventApiFullItem | null; error: string | null }>(`${this.apiUrl}/events/${id}`).pipe(
+        return this.http.get<EventApiResponseSingle>(this.eventUrl(id)).pipe(
             map(response => {
                 if (response.data) {
                     return mapApiToFullEvent(response.data);
