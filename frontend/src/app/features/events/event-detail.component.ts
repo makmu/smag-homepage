@@ -1,5 +1,6 @@
 import { Component, input, signal, inject, effect, computed } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
 import { ViewportScroller } from '@angular/common';
@@ -8,10 +9,11 @@ import { ORANGE_STYLE } from '../../core/constants/theme-colors';
 import { SignupDialogComponent } from '../../shared/components/signup-dialog.component';
 import { EventModalComponent } from '../../shared/event-modal/event-modal.component';
 import { SignupDetailModalComponent } from '../../shared/signup-detail-modal/signup-detail-modal.component';
-import { EventService, Event } from '../../core/services/event.service';
+import { EventService, Event, parseEventDetail } from '../../core/services/event.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
+import { reloadWhenIdle } from '../../shared/utils/resource.utils';
 
 export interface EventSignup {
     name: string;
@@ -242,11 +244,28 @@ export class EventDetailComponent {
     protected csvDownloadError = signal<string | null>(null);
     
     private readonly eventService = inject(EventService);
-    
+
     id = input<number>();
-    event = signal<Event | null>(null);
-    loading = signal(true);
-    private hasScrolled = signal(false);
+
+    /**
+     * Fetches the event for the current `:id`. Changing the id aborts the pending request,
+     * so a slow response for a previously visited event can never overwrite the current one.
+     */
+    private readonly eventResource = httpResource<Event | null>(
+        () => {
+            const eventId = Number(this.id());
+            return eventId ? this.eventService.eventUrl(eventId) : undefined;
+        },
+        { parse: parseEventDetail },
+    );
+
+    protected readonly event = computed(() =>
+        this.eventResource.hasValue() ? (this.eventResource.value() ?? null) : null
+    );
+    protected readonly loading = computed(() => this.eventResource.isLoading());
+    /** Refetches after a mutation, waiting for a pending request instead of being dropped. */
+    private readonly reloadEvent = reloadWhenIdle(this.eventResource);
+    private hasScrolled = false;
 
     private readonly dateParts = computed(() => {
         const evt = this.event();
@@ -259,9 +278,9 @@ export class EventDetailComponent {
 
     constructor() {
         effect(() => {
-            const eventId = Number(this.id());
-            if (eventId) {
-                this.loadEvent();
+            if (this.event() && !this.hasScrolled) {
+                this.hasScrolled = true;
+                this.viewportScroller.scrollToPosition([0, 0]);
             }
         });
     }
@@ -276,7 +295,7 @@ export class EventDetailComponent {
 
     protected onEventSaved(): void {
         this.showEditModal.set(false);
-        this.loadEvent();
+        this.reloadEvent();
     }
     
     protected isSignupOpen(event: Event): boolean {
@@ -294,28 +313,7 @@ export class EventDetailComponent {
     }
 
     protected refreshEvent(): void {
-        this.loadEvent();
-    }
-
-    private loadEvent(): void {
-        this.loading.set(true);
-        const eventId = Number(this.id());
-        if (eventId) {
-            this.eventService.getEvent(eventId).subscribe({
-                next: (data) => {
-                    this.event.set(data);
-                    this.loading.set(false);
-                    if (!this.hasScrolled()) {
-                        this.hasScrolled.set(true);
-                        this.viewportScroller.scrollToPosition([0, 0]);
-                    }
-                },
-                error: () => {
-                    this.event.set(null);
-                    this.loading.set(false);
-                }
-            });
-        }
+        this.reloadEvent();
     }
 
     protected downloadSignupsCsv(): void {

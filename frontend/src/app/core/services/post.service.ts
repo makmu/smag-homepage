@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 
@@ -23,13 +23,20 @@ export interface PostApiItem {
 export interface PostApiResponse {
     data: {
         items: PostApiItem[];
-        pagination: {
-            page: number;
-            limit: number;
-            total: number;
-            total_pages: number;
-        };
+        pagination: PostPagination;
     };
+}
+
+export interface PostPagination {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+}
+
+export interface PostPage {
+    posts: Post[];
+    pagination: PostPagination;
 }
 
 export interface PostApiResponseSingle {
@@ -42,6 +49,18 @@ export interface PostApiFullItem extends PostApiItem {
     updated_at: string;
     prev_post_id: number | null;
     next_post_id: number | null;
+}
+
+export interface PostDetail {
+    id: number;
+    thumbnailUrl: string;
+    title: string;
+    caption: string;
+    date: string;
+    createdAt: string;
+    updatedAt: string;
+    prevPostId: number | null;
+    nextPostId: number | null;
 }
 
 export interface AddPostRequest {
@@ -84,45 +103,53 @@ export function toRelativeThumbnailUrl(url: string): string {
     return mediaIndex !== -1 ? url.slice(mediaIndex) : url;
 }
 
+/**
+ * Transforms a raw `GET /posts` body into a page of posts. Used as the `parse` option
+ * of an `httpResource`.
+ */
+export function parsePosts(body: unknown): PostPage {
+    const response = body as PostApiResponse;
+    return {
+        posts: response.data.items.map(mapApiToPost),
+        pagination: response.data.pagination,
+    };
+}
+
+/**
+ * Transforms a raw `GET /posts/:id` body into a post, or `null` when the backend reports
+ * no such post. Used as the `parse` option of an `httpResource`.
+ */
+export function parsePostDetail(body: unknown): PostDetail | null {
+    const response = body as PostApiResponseSingle;
+    if (!response.data) {
+        return null;
+    }
+
+    const p = response.data;
+    return {
+        id: p.id,
+        thumbnailUrl: toFullThumbnailUrl(p.thumbnail_url),
+        title: p.title,
+        caption: p.caption,
+        date: p.date,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+        prevPostId: p.prev_post_id,
+        nextPostId: p.next_post_id,
+    };
+}
+
 @Injectable({ providedIn: 'root' })
 export class PostService {
     private readonly http = inject(HttpClient);
     private readonly apiUrl = environment.apiUrl;
 
-    getPosts(page: number = 1, limit: number = 20): Observable<{ posts: Post[], pagination: PostApiResponse['data']['pagination'] }> {
-        const params = new HttpParams()
-            .set('page', page.toString())
-            .set('limit', limit.toString());
-
-        return this.http.get<PostApiResponse>(`${this.apiUrl}/posts`, { params }).pipe(
-            map(response => ({
-                posts: response.data.items.map(mapApiToPost),
-                pagination: response.data.pagination
-            }))
-        );
+    postsUrl(page: number, limit: number = 20): string {
+        return `${this.apiUrl}/posts?page=${page}&limit=${limit}`;
     }
 
-    getPost(id: number): Observable<{ id: number; thumbnailUrl: string; title: string; caption: string; date: string; createdAt: string; updatedAt: string; prevPostId: number | null; nextPostId: number | null } | null> {
-        return this.http.get<{ data: PostApiFullItem | null; error: string | null }>(`${this.apiUrl}/posts/${id}`).pipe(
-            map(response => {
-                if (response.data) {
-                    const p = response.data;
-
-                    return {
-                        id: p.id,
-                        thumbnailUrl: toFullThumbnailUrl(p.thumbnail_url),
-                        title: p.title,
-                        caption: p.caption,
-                        date: p.date,
-                        createdAt: p.created_at,
-                        updatedAt: p.updated_at,
-                        prevPostId: p.prev_post_id,
-                        nextPostId: p.next_post_id,
-                    };
-                }
-                return null;
-            })
-        );
+    postUrl(id: number): string {
+        return `${this.apiUrl}/posts/${id}`;
     }
 
     createPost(post: AddPostRequest): Observable<PostApiResponseSingle> {

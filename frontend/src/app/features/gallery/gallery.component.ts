@@ -1,20 +1,15 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, computed, effect } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { NgOptimizedImage } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { PostService, Post } from '../../core/services/post.service';
+import { PostService, Post, PostPage, parsePosts } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { PostModalComponent } from '../../shared/post-modal/post-modal.component';
 import { EditablePost, postToEditablePost } from '../../shared/post-modal/post-helpers';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
-
-interface Pagination {
-    page: number;
-    limit: number;
-    total: number;
-    total_pages: number;
-}
+import { reloadWhenIdle } from '../../shared/utils/resource.utils';
 
 @Component({
     selector: 'app-gallery',
@@ -102,21 +97,43 @@ interface Pagination {
     }
   `
 })
-export class GalleryComponent implements OnInit {
+export class GalleryComponent {
     protected readonly parseToDisplayParts = parseToDisplayParts;
     protected readonly authService = inject(AuthService);
 
     private readonly postService = inject(PostService);
 
-protected posts = signal<Post[]>([]);
-    protected loading = signal(true);
-    protected error = signal<string | null>(null);
+    protected readonly page = signal(1);
+
+    /** Changing the page aborts the pending request, so a slow page 1 cannot arrive after page 2. */
+    private readonly postsResource = httpResource<PostPage>(
+        () => this.postService.postsUrl(this.page()),
+        { parse: parsePosts },
+    );
+
+    protected readonly posts = computed(() =>
+        this.postsResource.hasValue() ? (this.postsResource.value()?.posts ?? []) : []
+    );
+    protected readonly pagination = computed(() =>
+        this.postsResource.hasValue() ? (this.postsResource.value()?.pagination ?? null) : null
+    );
+    protected readonly loading = computed(() => this.postsResource.isLoading());
+    protected readonly error = computed(() =>
+        this.postsResource.status() === 'error' ? 'Fehler beim Laden der Galerie.' : null
+    );
+    /** Refetches after a mutation, waiting for a pending request instead of being dropped. */
+    private readonly reloadPosts = reloadWhenIdle(this.postsResource);
+
     protected showModal = signal(false);
     protected editingPost = signal<EditablePost | null>(null);
-    protected pagination = signal<Pagination | null>(null);
 
-    ngOnInit(): void {
-        this.loadPage(1);
+    constructor() {
+        effect(() => {
+            const err = this.postsResource.error();
+            if (err) {
+                console.error('Failed to load posts:', err);
+            }
+        });
     }
 
     closeModal(): void {
@@ -137,20 +154,11 @@ protected posts = signal<Post[]>([]);
     }
 
     loadPage(page: number): void {
-        this.loading.set(true);
-
-        this.postService.getPosts(page).subscribe({
-            next: (response) => {
-                this.posts.set(response.posts);
-                this.pagination.set(response.pagination);
-                this.loading.set(false);
-            },
-            error: (err) => {
-                console.error('Failed to load posts:', err);
-                this.error.set('Fehler beim Laden der Galerie.');
-                this.loading.set(false);
-            }
-        });
+        if (this.page() === page) {
+            this.reloadPosts();
+        } else {
+            this.page.set(page);
+        }
     }
 
     onPostSaved(): void {

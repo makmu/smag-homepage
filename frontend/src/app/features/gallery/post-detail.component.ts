@@ -1,16 +1,16 @@
-import { Component, input, signal, inject, effect, DestroyRef, OnDestroy } from '@angular/core';
+import { Component, input, signal, inject, effect, computed } from '@angular/core';
 import { ChangeDetectionStrategy } from '@angular/core';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { httpResource } from '@angular/common/http';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { RouterLink, Router } from '@angular/router';
 import { NgOptimizedImage, ViewportScroller } from '@angular/common';
-import { PostService } from '../../core/services/post.service';
+import { PostService, PostDetail, parsePostDetail } from '../../core/services/post.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { SmagLoaderComponent } from '../../shared/loader/loader.component';
 import { PostModalComponent } from '../../shared/post-modal/post-modal.component';
-import { EditablePost, postToEditablePost } from '../../shared/post-modal/post-helpers';
+import { EditablePost } from '../../shared/post-modal/post-helpers';
 import { parseToDisplayParts } from '../../shared/utils/date.utils';
+import { reloadWhenIdle } from '../../shared/utils/resource.utils';
 
 @Component({
     selector: 'app-post-detail',
@@ -106,19 +106,34 @@ import { parseToDisplayParts } from '../../shared/utils/date.utils';
       }
     `]
 })
-export class PostDetailComponent implements OnDestroy {
+export class PostDetailComponent {
     protected readonly authService = inject(AuthService);
     private readonly postService = inject(PostService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly router = inject(Router);
     private readonly viewportScroller = inject(ViewportScroller);
-    private readonly destroyRef = inject(DestroyRef);
-    private readonly destroy$ = new Subject<void>();
 
     id = input<number>();
-    post = signal<ReturnType<typeof this.postService.getPost> extends import("rxjs").Observable<infer T> ? T : never | null>(null);
-    loading = signal(true);
-    private hasScrolled = signal(false);
+
+    /**
+     * Fetches the post for the current `:id`. Changing the id aborts the pending request,
+     * so a slow response for a previously visited post can never overwrite the current one.
+     */
+    private readonly postResource = httpResource<PostDetail | null>(
+        () => {
+            const postId = Number(this.id());
+            return postId ? this.postService.postUrl(postId) : undefined;
+        },
+        { parse: parsePostDetail },
+    );
+
+    protected readonly post = computed(() =>
+        this.postResource.hasValue() ? (this.postResource.value() ?? null) : null
+    );
+    protected readonly loading = computed(() => this.postResource.isLoading());
+    /** Refetches after a mutation, waiting for a pending request instead of being dropped. */
+    private readonly reloadPost = reloadWhenIdle(this.postResource);
+    private hasScrolled = false;
     touchStartX = signal<number | null>(null);
     touchStartY = signal<number | null>(null);
     isSwipeCancelled = signal(false);
@@ -127,37 +142,11 @@ export class PostDetailComponent implements OnDestroy {
 
     constructor() {
         effect(() => {
-            const postId = Number(this.id());
-            if (postId) {
-                this.loadPost();
+            if (this.post() && !this.hasScrolled) {
+                this.hasScrolled = true;
+                this.viewportScroller.scrollToPosition([0, 0]);
             }
         });
-    }
-
-    ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
-    }
-
-    private loadPost(): void {
-        this.loading.set(true);
-        const postId = Number(this.id());
-        if (postId) {
-            this.postService.getPost(postId).pipe(takeUntil(this.destroy$)).subscribe({
-                next: (data) => {
-                    this.post.set(data);
-                    this.loading.set(false);
-                    if (!this.hasScrolled()) {
-                        this.hasScrolled.set(true);
-                        this.viewportScroller.scrollToPosition([0, 0]);
-                    }
-                },
-                error: () => {
-                    this.post.set(null);
-                    this.loading.set(false);
-                }
-            });
-        }
     }
 
     formatDate(dateStr: string): string {
@@ -238,10 +227,6 @@ export class PostDetailComponent implements OnDestroy {
 
     onPostSaved(): void {
         this.closeEditModal();
-        this.loadPost();
-    }
-
-    refreshPost(): void {
-        this.loadPost();
+        this.reloadPost();
     }
 }
