@@ -2,16 +2,34 @@
   "version": 1,
   "skills": {
     "angular-developer": {
-      "source": "angular/skills",
+      "source": "makmu/skills",
       "sourceType": "github",
-      "skillPath": "angular-developer/SKILL.md",
+      "skillPath": "skills/angular-developer/SKILL.md",
       "computedHash": "a473e70568cb0a5318b8e4a5d39352de8c6cb141278959ed77d4e2f3c55d2541"
     },
+    "feature-dev": {
+      "source": "makmu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/feature-dev/SKILL.md",
+      "computedHash": "15b0ce42ced2c29b366138dbca508d63b7de19c927a34dd0b912eb82c7247984"
+    },
+    "fix": {
+      "source": "makmu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/fix/SKILL.md",
+      "computedHash": "0beea10c70b124327f674e55b72d5cfe46705cff7a0ba5abfc10fccda147eb53"
+    },
+    "github-pr-keywords": {
+      "source": "makmu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/github-pr-keywords/SKILL.md",
+      "computedHash": "071b9b4d18a8057fe93d5f931ccb4a3a38c3837d9181c64cfa73fbd7734470bc"
+    },
     "php-best-practices": {
-      "source": "asyrafhussin/agent-skills",
+      "source": "makmu/skills",
       "sourceType": "github",
       "skillPath": "skills/php-best-practices/SKILL.md",
-      "computedHash": "1b25a60572ddd8b206eaf68b067cde70a9d002df572de8fefda703532cecfdad"
+      "computedHash": "6c91eb4af6814a45d86a20df47631bd486cb175f0d6770804099de30ddf22989"
     }
   }
 }

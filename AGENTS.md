@@ -5,8 +5,7 @@ Any commit related to a github issue must contain the number of the github issue
 ## GitHub Operations
 
 When creating pull requests or performing GitHub operations:
-1. First try using the GitHub MCP tools (e.g., `github_create_pull_request`, `github_create_issue`, etc.)
-2. If the MCP tools fail, fall back to the `gh` CLI (e.g., `gh pr create`)
+Use the `gh` CLI for all GitHub operations (e.g., `gh pr create`, `gh issue view 88`)
 
 ## Issue Management
 

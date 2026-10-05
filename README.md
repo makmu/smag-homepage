@@ -14,6 +14,7 @@ Ensure you have the following installed:
 -   **PHP** (8.2 or higher)
 -   **Composer** (Dependency Manager for PHP)
 -   **Docker** (optional, for running MailHog to capture emails locally)
+-   **GitHub CLI (`gh`)** — required for agentic development: agents use it to view issues and create pull requests. Install it and run `gh auth login` once.
 
 ### General Development Setup
 
@@ -24,6 +25,8 @@ npx skills update
 ```
 
 This fetches the current skill definitions and installs them into your agent's configuration, so the agent follows the project conventions (see `AGENTS.md` in the repository root and in `frontend/`).
+
+Agents work on GitHub issues and pull requests through the `gh` CLI, so make sure it is installed and authenticated (`gh auth login`) before handing a task to your agent.
 
 ### 1. Frontend Setup
 
