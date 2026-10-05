@@ -15,6 +15,16 @@ Ensure you have the following installed:
 -   **Composer** (Dependency Manager for PHP)
 -   **Docker** (optional, for running MailHog to capture emails locally)
 
+### General Development Setup
+
+This repository ships agent skills (rules and instructions for AI coding agents such as OpenCode). After cloning the repository — and whenever the skills change — initialize or update them by running:
+
+```bash
+npx skills update
+```
+
+This fetches the current skill definitions and installs them into your agent's configuration, so the agent follows the project conventions (see `AGENTS.md` in the repository root and in `frontend/`).
+
 ### 1. Frontend Setup
 
 The frontend is an Angular application located in the `frontend` directory.

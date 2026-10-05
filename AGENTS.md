@@ -21,3 +21,8 @@ This project maintains architecture documentation in the `docs/` folder. If you 
 ## UX Guidelines
 
 This project maintains UX guidelines in `docs/ux-guideline.md`. Consult it for UX-related rules and conventions when working on the frontend or user-facing features. Only read this file on demand when the task requires it.
+
+## Code Comments
+
+- Only add comments in code if the code is not self-evident, i.e. there are hidden side-effects, non-obvious constraints or effects, or heads-ups.
+- Do not comment on code that explains itself.
