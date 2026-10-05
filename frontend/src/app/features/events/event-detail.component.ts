@@ -227,6 +227,7 @@ export interface EventSignup {
         [eventId]="event()!.id"
         [signupId]="selectedSignupId()!"
         (close)="closeSignupDetailModal()"
+        (deleted)="onSignupDeleted()"
       />
     }
   `
@@ -349,10 +350,19 @@ export class EventDetailComponent {
         this.showSignupDetailModal.set(true);
     }
 
+    /**
+     * Closes the signup detail dialog without refetching: a plain close (Escape, backdrop,
+     * close button) never changed any data. The refetch after a delete is tied to `deleted`
+     * instead, so it always runs once the DELETE has actually landed.
+     */
     protected closeSignupDetailModal(): void {
-        this.refreshEvent();
         this.showSignupDetailModal.set(false);
         this.selectedSignupId.set(null);
+    }
+
+    protected onSignupDeleted(): void {
+        this.refreshEvent();
+        this.closeSignupDetailModal();
     }
 
     private sanitizeFilename(name: string): string {
