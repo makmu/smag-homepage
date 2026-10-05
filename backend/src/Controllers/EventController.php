@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database\Database;
+use App\Services\CsvExportService;
 use App\Services\MailService;
 use App\Services\TurnstileService;
 use PDO;
@@ -462,7 +463,7 @@ final class EventController
             return $this->errorResponse($response, 404, 'No signups found for this event');
         }
 
-        $csvData = $this->buildCsvData($signups);
+        $csvData = (new CsvExportService())->buildSignupExport($signups);
         
         $filename = 'anmeldungen_event_' . $eventId . '_' . date('Y-m-d') . '.csv';
         
@@ -479,34 +480,5 @@ final class EventController
         $stmt = $this->getDb()->prepare('SELECT name, email, comment, created_at FROM signups WHERE event_id = :event_id ORDER BY created_at ASC');
         $stmt->execute(['event_id' => $eventId]);
         return $stmt->fetchAll();
-    }
-
-    private function buildCsvData(array $signups): string
-    {
-        $headers = ['Name', 'E-Mail', 'Kommentar', 'Anmeldezeitpunkt'];
-        $rows = [];
-        
-        foreach ($signups as $signup) {
-            $rows[] = [
-                $signup['name'],
-                $signup['email'],
-                $signup['comment'] ?? '',
-                $signup['created_at'],
-            ];
-        }
-        
-        $output = fopen('php://temp', 'r+');
-        
-        fputcsv($output, $headers, ';');
-        
-        foreach ($rows as $row) {
-            fputcsv($output, $row, ';');
-        }
-        
-        rewind($output);
-        $content = stream_get_contents($output);
-        fclose($output);
-        
-        return "\xEF\xBB\xBF" . $content;
     }
 }
