@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, catchError, finalize, map, share } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 interface User {
@@ -25,6 +25,9 @@ export class AuthService {
   private http = inject(HttpClient);
 
   private readonly user = signal<User | null>(this.loadUser());
+
+  /** Single-flight guard: concurrent 401 responses share one refresh request. */
+  private refreshInFlight$: Observable<boolean> | null = null;
 
   readonly currentUser = this.user.asReadonly();
   readonly isLoggedIn = () => this.user() !== null;
@@ -83,30 +86,34 @@ export class AuthService {
   }
 
   refreshToken(): Observable<boolean> {
+    if (this.refreshInFlight$) {
+      return this.refreshInFlight$;
+    }
+
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
       return of(false);
     }
 
-    return new Observable((observer) => {
-      this.http
-        .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refresh_token: refreshToken })
-        .subscribe({
-          next: (response) => {
-            if (response.data) {
-              localStorage.setItem(TOKEN_KEY, response.data.access_token);
-              localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh_token);
-              observer.next(true);
-            } else {
-              observer.next(false);
-            }
-            observer.complete();
-          },
-          error: () => {
-            observer.next(false);
-            observer.complete();
-          },
-        });
-    });
+    const refresh$ = this.http
+      .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refresh_token: refreshToken })
+      .pipe(
+        map((response) => {
+          if (!response.data) {
+            return false;
+          }
+          localStorage.setItem(TOKEN_KEY, response.data.access_token);
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh_token);
+          return true;
+        }),
+        catchError(() => of(false)),
+        finalize(() => {
+          this.refreshInFlight$ = null;
+        }),
+        share()
+      );
+
+    this.refreshInFlight$ = refresh$;
+    return refresh$;
   }
 }
