@@ -14,7 +14,7 @@ final class CsvExportService
     {
         $output = fopen('php://temp', 'r+');
 
-        fputcsv($output, self::HEADERS, self::DELIMITER);
+        fputcsv($output, self::HEADERS, self::DELIMITER, escape: '');
 
         foreach ($signups as $signup) {
             fputcsv($output, [
@@ -22,7 +22,7 @@ final class CsvExportService
                 $this->neutralize((string) ($signup['email'] ?? '')),
                 $this->neutralize((string) ($signup['comment'] ?? '')),
                 $this->neutralize((string) ($signup['created_at'] ?? '')),
-            ], self::DELIMITER);
+            ], self::DELIMITER, escape: '');
         }
 
         rewind($output);
