@@ -15,5 +15,13 @@
         "psr-4": {
             "App\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
