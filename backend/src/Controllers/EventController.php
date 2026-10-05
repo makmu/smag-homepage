@@ -100,9 +100,11 @@ final class EventController
             return $this->errorResponse($response, 400, 'Invalid email address');
         }
 
-        $name = htmlspecialchars(strip_tags(trim($data['name'])));
-        $email = htmlspecialchars(strip_tags(trim($data['email'])));
-        $comment = isset($data['comment']) ? htmlspecialchars(strip_tags(trim($data['comment']))) : null;
+        // Store the raw input; escaping happens in the context each output is rendered in
+        // (JSON, CSV, plain-text mail), not before persistence.
+        $name = strip_tags(trim($data['name']));
+        $email = strip_tags(trim($data['email']));
+        $comment = isset($data['comment']) ? strip_tags(trim($data['comment'])) : null;
         $createdAt = (new \DateTime())->format(\DateTime::ATOM);
 
         $signup = $this->insertSignup($eventId, $event['signup_limit'], $name, $email, $comment, $createdAt);

@@ -54,6 +54,48 @@ final class EventControllerSignupTest extends TestCase
         $this->assertSame(1, $this->signupCountFromOtherConnection($eventId));
     }
 
+    public function testSignupStoresValuesWithoutHtmlEscaping(): void
+    {
+        $eventId = $this->createEvent(null);
+
+        $response = $this->signup($this->controller(), $eventId, [
+            'name' => '  Tom & Jerry  ',
+            'email' => 'tom+jerry@example.com',
+            'comment' => 'Bitte <b>schnell</b> & leise',
+        ]);
+
+        $this->assertSame(200, $response->getStatusCode());
+
+        $stmt = $this->db->prepare('SELECT name, email, comment FROM signups WHERE event_id = :event_id');
+        $stmt->execute(['event_id' => $eventId]);
+        $signup = $stmt->fetch();
+
+        $this->assertSame('Tom & Jerry', $signup['name']);
+        $this->assertSame('tom+jerry@example.com', $signup['email']);
+        $this->assertSame('Bitte schnell & leise', $signup['comment']);
+        $this->assertSame('Tom & Jerry', $this->body($response)['data']['name']);
+    }
+
+    public function testConfirmationMailContainsRawName(): void
+    {
+        $eventId = $this->createEvent(null);
+        $mailBody = '';
+
+        $mailer = function (string $email, string $subject, string $body) use (&$mailBody): bool {
+            $mailBody = $body;
+            return true;
+        };
+
+        $response = $this->signup($this->controller($mailer), $eventId, [
+            'name' => 'Tom & Jerry',
+            'email' => 'tom+jerry@example.com',
+        ]);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertStringContainsString('Hallo Tom & Jerry,', $mailBody);
+        $this->assertStringNotContainsString('&amp;', $mailBody);
+    }
+
     public function testSignupIsRejectedWithConflictWhenLimitIsReached(): void
     {
         $eventId = $this->createEvent(1);
