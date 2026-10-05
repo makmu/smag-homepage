@@ -18,7 +18,7 @@ final class CsvExportService
 
         foreach ($signups as $signup) {
             fputcsv($output, [
-                $this->neutralize((string) $signup['name']),
+                $this->neutralize((string) ($signup['name'] ?? '')),
                 $this->neutralize((string) ($signup['email'] ?? '')),
                 $this->neutralize((string) ($signup['comment'] ?? '')),
                 $this->neutralize((string) ($signup['created_at'] ?? '')),
