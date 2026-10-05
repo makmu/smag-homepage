@@ -1,4 +1,15 @@
-import { Component, ChangeDetectionStrategy, input, output, signal, inject, effect } from '@angular/core';
+import {
+    Component,
+    ChangeDetectionStrategy,
+    DestroyRef,
+    effect,
+    inject,
+    input,
+    OnDestroy,
+    output,
+    signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { EventService, SignupDetail } from '../../core/services/event.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -94,13 +105,23 @@ import { SmagDialogComponent } from '../components/dialog.component';
         </smag-dialog>
     `
 })
-export class SignupDetailModalComponent {
+export class SignupDetailModalComponent implements OnDestroy {
     private readonly eventService = inject(EventService);
+    private readonly destroyRef = inject(DestroyRef);
     readonly authService = inject(AuthService);
 
     eventId = input.required<number>();
     signupId = input.required<number>();
+
+    /**
+     * Emitted when the dialog is dismissed without a confirmed change (Escape, backdrop,
+     * close button, a failed delete). The parent can simply drop the dialog — there is
+     * nothing to refetch.
+     */
     close = output<void>();
+
+    /** The signup was deleted on the server — the parent should refetch before closing. */
+    deleted = output<void>();
 
     signup = signal<SignupDetail | null>(null);
     loading = signal(true);
@@ -125,7 +146,7 @@ export class SignupDetailModalComponent {
         this.loading.set(true);
         this.error.set(null);
 
-        this.eventService.getSignupDetail(eventId, signupId).subscribe({
+        this.eventService.getSignupDetail(eventId, signupId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (response) => {
                 this.loading.set(false);
                 if (response.data) {
@@ -151,33 +172,46 @@ export class SignupDetailModalComponent {
     }
 
     private resetDeleteTimeout(): void {
-        if (this.deleteTimeout) {
-            clearTimeout(this.deleteTimeout);
-        }
+        this.clearDeleteTimeout();
         this.deleteTimeout = setTimeout(() => {
             this.deleteConfirm.set(false);
         }, 5000);
     }
 
-    private performDelete(): void {
+    private clearDeleteTimeout(): void {
         if (this.deleteTimeout) {
             clearTimeout(this.deleteTimeout);
+            this.deleteTimeout = null;
         }
+    }
+
+    private performDelete(): void {
+        this.clearDeleteTimeout();
 
         this.deleting.set(true);
-        this.eventService.deleteSignup(this.eventId(), this.signupId()).subscribe({
-            next: (response) => {
-                this.deleting.set(false);
-                if (response.error) {
-                    this.error.set(response.error);
-                } else {
-                    this.close.emit();
-                }
-            },
-            error: () => {
-                this.deleting.set(false);
-                this.error.set('Fehler beim Löschen der Anmeldung');
-            }
-        });
+        // Torn down with the component: leaving the dialog while the DELETE is in flight
+        // cancels the request, so `deleted` — and with it the parent's refetch — only ever
+        // fires for a delete that actually completed while the dialog was open.
+        this.eventService
+            .deleteSignup(this.eventId(), this.signupId())
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+                next: (response) => {
+                    this.deleting.set(false);
+                    if (response.error) {
+                        this.error.set(response.error);
+                    } else {
+                        this.deleted.emit();
+                    }
+                },
+                error: () => {
+                    this.deleting.set(false);
+                    this.error.set('Fehler beim Löschen der Anmeldung');
+                },
+            });
+    }
+
+    ngOnDestroy(): void {
+        this.clearDeleteTimeout();
     }
 }
