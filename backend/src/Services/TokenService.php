@@ -20,6 +20,15 @@ final class TokenService
         return bin2hex(random_bytes(32));
     }
 
+    /**
+     * Tokens are random 256-bit values, so an unsalted SHA-256 is sufficient.
+     * The plaintext token must never reach the database, only this hash.
+     */
+    private function hashToken(string $token): string
+    {
+        return hash('sha256', $token);
+    }
+
     public function createTokenPair(int $userId): array
     {
         $config = $this->getConfig();
@@ -32,19 +41,19 @@ final class TokenService
         $refreshExpires = date('Y-m-d H:i:s', time() + $config['REFRESH_TOKEN_TTL']);
 
         $stmt = $pdo->prepare('
-            INSERT INTO tokens (token, user_id, type, expires_at)
-            VALUES (:token, :user_id, :type, :expires_at)
+            INSERT INTO tokens (token_hash, user_id, type, expires_at)
+            VALUES (:token_hash, :user_id, :type, :expires_at)
         ');
 
         $stmt->execute([
-            'token' => $accessToken,
+            'token_hash' => $this->hashToken($accessToken),
             'user_id' => $userId,
             'type' => 'access',
             'expires_at' => $accessExpires,
         ]);
 
         $stmt->execute([
-            'token' => $refreshToken,
+            'token_hash' => $this->hashToken($refreshToken),
             'user_id' => $userId,
             'type' => 'refresh',
             'expires_at' => $refreshExpires,
@@ -64,10 +73,10 @@ final class TokenService
         $stmt = $pdo->prepare('
             SELECT user_id, expires_at
             FROM tokens
-            WHERE token = :token AND type = \'access\'
+            WHERE token_hash = :token_hash AND type = \'access\'
         ');
         
-        $stmt->execute(['token' => $token]);
+        $stmt->execute(['token_hash' => $this->hashToken($token)]);
         $row = $stmt->fetch();
 
         if ($row === false) {
@@ -90,10 +99,10 @@ final class TokenService
         $stmt = $pdo->prepare('
             SELECT user_id, expires_at
             FROM tokens
-            WHERE token = :token AND type = \'refresh\'
+            WHERE token_hash = :token_hash AND type = \'refresh\'
         ');
         
-        $stmt->execute(['token' => $refreshToken]);
+        $stmt->execute(['token_hash' => $this->hashToken($refreshToken)]);
         $row = $stmt->fetch();
 
         if ($row === false) {
@@ -113,8 +122,8 @@ final class TokenService
     {
         $pdo = Database::getConnection();
         
-        $stmt = $pdo->prepare('DELETE FROM tokens WHERE token = :token');
-        return $stmt->execute(['token' => $token]);
+        $stmt = $pdo->prepare('DELETE FROM tokens WHERE token_hash = :token_hash');
+        return $stmt->execute(['token_hash' => $this->hashToken($token)]);
     }
 
     public function invalidateAllUserTokens(int $userId): int

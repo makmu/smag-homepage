@@ -102,7 +102,7 @@ final class Database
 
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS tokens (
-                token CHAR(64) NOT NULL PRIMARY KEY,
+                token_hash CHAR(64) NOT NULL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 type TEXT NOT NULL CHECK(type IN (\'access\', \'refresh\')),
                 expires_at TEXT NOT NULL,
