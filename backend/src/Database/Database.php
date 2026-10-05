@@ -44,7 +44,7 @@ final class Database
         return $pdo;
     }
 
-    private static function initializeSchema(PDO $pdo): void
+    public static function initializeSchema(PDO $pdo): void
     {
         $pdo->exec('
             CREATE TABLE IF NOT EXISTS events (
@@ -76,6 +76,13 @@ final class Database
         ');
 
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_signups_event_id ON signups(event_id)');
+
+        try {
+            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_signups_event_email ON signups(event_id, email)');
+        } catch (PDOException $e) {
+            // Databases created before this index may still hold duplicates from the race it prevents.
+        }
+
         $pdo->exec('CREATE INDEX IF NOT EXISTS idx_events_date ON events(date)');
 
         $pdo->exec('
