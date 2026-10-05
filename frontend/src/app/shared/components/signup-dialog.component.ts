@@ -209,7 +209,7 @@ export class SignupDialogComponent {
             },
             error: (err) => {
                 this.isSubmitting.set(false);
-                if (err.status === 400 && err.error?.error) {
+                if (typeof err.error?.error === 'string' && err.error.error) {
                     this.error.set(`Ein Fehler ist aufgetreten: ${err.error.error}`);
                 } else {
                     this.error.set('Ein Fehler ist aufgetreten. Bitte versuche es später erneut.');

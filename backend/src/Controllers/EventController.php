@@ -9,6 +9,7 @@ use App\Services\CsvExportService;
 use App\Services\MailService;
 use App\Services\TurnstileService;
 use PDO;
+use PDOException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -18,13 +19,28 @@ final class EventController
     private const REQUIRED_FIELDS = ['title', 'teaser', 'location', 'date', 'description', 'signup_type'];
     private const REQUIRED_SIGNUP_FIELDS = ['name', 'email'];
 
+    private ?PDO $db;
+    private ?array $config;
+    private ?\Closure $mailer;
+
+    public function __construct(?PDO $db = null, ?array $config = null, ?callable $mailer = null)
+    {
+        $this->db = $db;
+        $this->config = $config;
+        $this->mailer = $mailer === null ? null : \Closure::fromCallable($mailer);
+    }
+
     private function getDb(): PDO
     {
-        return Database::getConnection();
+        return $this->db ?? Database::getConnection();
     }
 
     private function getConfig(): array
     {
+        if ($this->config !== null) {
+            return $this->config;
+        }
+
         return require __DIR__ . '/../../config.php';
     }
 
@@ -69,14 +85,6 @@ final class EventController
             }
         }
 
-        $signupCount = $this->getSignupCount($eventId);
-
-        if (!empty($event['signup_limit'])) {
-            if ($signupCount >= $event['signup_limit']) {
-                return $this->errorResponse($response, 400, 'Signup limit reached');
-            }
-        }
-
         $missingFields = [];
         foreach (self::REQUIRED_SIGNUP_FIELDS as $field) {
             if (empty($data[$field])) {
@@ -92,29 +100,19 @@ final class EventController
             return $this->errorResponse($response, 400, 'Invalid email address');
         }
 
-        if ($this->hasSignupByEmail($eventId, $data['email'])) {
-            return $this->errorResponse($response, 400, 'You are already signed up for this event');
-        }
-
         $name = htmlspecialchars(strip_tags(trim($data['name'])));
         $email = htmlspecialchars(strip_tags(trim($data['email'])));
         $comment = isset($data['comment']) ? htmlspecialchars(strip_tags(trim($data['comment']))) : null;
         $createdAt = (new \DateTime())->format(\DateTime::ATOM);
 
-        $stmt = $this->getDb()->prepare(
-            'INSERT INTO signups (event_id, name, email, comment, created_at) VALUES (:event_id, :name, :email, :comment, :created_at)'
-        );
-        $stmt->execute([
-            'event_id' => $eventId,
-            'name' => $name,
-            'email' => $email,
-            'comment' => $comment,
-            'created_at' => $createdAt,
-        ]);
+        $signup = $this->insertSignup($eventId, $event['signup_limit'], $name, $email, $comment, $createdAt);
 
-        $signupId = (int) $this->getDb()->lastInsertId();
+        if (isset($signup['error'])) {
+            return $this->errorResponse($response, $signup['status'], $signup['error']);
+        }
 
-        $mailService = new MailService();
+        $signupId = $signup['id'];
+
         $config = $this->getConfig();
         $subject = 'Anmeldung für ' . $event['title'];
         $body = 'Hallo ' . $name . ',' . PHP_EOL . PHP_EOL;
@@ -122,7 +120,7 @@ final class EventController
         $body .= 'Datum: ' . $this->formatDateInLocalTime($event['date'], $config) . PHP_EOL;
         $body .= 'Ort: ' . $event['location'] . PHP_EOL . PHP_EOL;
         $body .= 'Wir freuen uns auf dich!';
-        $mailSent = $mailService->send($email, $subject, $body);
+        $mailSent = $this->sendSignupMail($email, $subject, $body);
 
         if (!$mailSent) {
             return $this->errorResponse($response, 500, 'Anmeldung erfolgreich, aber Bestätigungs-E-Mail konnte nicht gesendet werden. Bitte wende dich an smag@fliederlich.de.');
@@ -330,6 +328,84 @@ final class EventController
         $stmt->execute(['event_id' => $eventId, 'email' => $email]);
         $result = $stmt->fetch();
         return (int) $result['count'] > 0;
+    }
+
+    /**
+     * @return array{id: int}|array{error: string, status: int}
+     */
+    private function insertSignup(int $eventId, ?int $signupLimit, string $name, string $email, ?string $comment, string $createdAt): array
+    {
+        $db = $this->getDb();
+
+        try {
+            // IMMEDIATE acquires the write lock before the checks, so a concurrent signup cannot
+            // run between them and the insert.
+            $db->exec('BEGIN IMMEDIATE');
+
+            $conflict = $this->findSignupConflict($eventId, $signupLimit, $email);
+            if ($conflict !== null) {
+                $this->rollbackSignup($db);
+                return $conflict;
+            }
+
+            $stmt = $db->prepare(
+                'INSERT INTO signups (event_id, name, email, comment, created_at) VALUES (:event_id, :name, :email, :comment, :created_at)'
+            );
+            $stmt->execute([
+                'event_id' => $eventId,
+                'name' => $name,
+                'email' => $email,
+                'comment' => $comment,
+                'created_at' => $createdAt,
+            ]);
+            $signupId = (int) $db->lastInsertId();
+            $db->exec('COMMIT');
+
+            return ['id' => $signupId];
+        } catch (PDOException $e) {
+            $this->rollbackSignup($db);
+
+            if (str_contains($e->getMessage(), 'UNIQUE constraint failed')) {
+                return ['error' => 'You are already signed up for this event', 'status' => 409];
+            }
+
+            error_log('Signup insert failed: ' . $e->getMessage());
+            return ['error' => 'Signup could not be saved. Please try again later.', 'status' => 500];
+        }
+    }
+
+    /**
+     * @return array{error: string, status: int}|null
+     */
+    private function findSignupConflict(int $eventId, ?int $signupLimit, string $email): ?array
+    {
+        if (!empty($signupLimit) && $this->getSignupCount($eventId) >= $signupLimit) {
+            return ['error' => 'Signup limit reached', 'status' => 409];
+        }
+
+        if ($this->hasSignupByEmail($eventId, $email)) {
+            return ['error' => 'You are already signed up for this event', 'status' => 409];
+        }
+
+        return null;
+    }
+
+    private function rollbackSignup(PDO $db): void
+    {
+        try {
+            $db->exec('ROLLBACK');
+        } catch (PDOException $e) {
+            // SQLite already ended the transaction.
+        }
+    }
+
+    private function sendSignupMail(string $email, string $subject, string $body): bool
+    {
+        if ($this->mailer !== null) {
+            return ($this->mailer)($email, $subject, $body);
+        }
+
+        return (new MailService())->send($email, $subject, $body);
     }
 
     private function validateEventData(array $data): ?string
