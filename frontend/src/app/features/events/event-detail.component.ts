@@ -317,18 +317,12 @@ export class EventDetailComponent {
     }
 
     protected downloadSignupsCsv(): void {
-        const token = this.authService.getToken();
-        if (!token) {
-            console.error('No auth token available');
-            return;
-        }
-
         const eventId = Number(this.id());
         if (!eventId) {
             return;
         }
 
-        this.eventService.downloadSignupsCsv(eventId, token).subscribe({
+        this.eventService.downloadSignupsCsv(eventId).subscribe({
             next: (blob) => {
                 this.csvDownloadError.set(null);
                 const url = window.URL.createObjectURL(blob);

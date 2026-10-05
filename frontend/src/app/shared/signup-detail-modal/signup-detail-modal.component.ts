@@ -122,17 +122,10 @@ export class SignupDetailModalComponent {
     }
 
     private fetchSignupDetail(eventId: number, signupId: number): void {
-        const token = this.authService.getToken();
-        if (!token) {
-            this.loading.set(false);
-            this.error.set('Nicht autorisiert');
-            return;
-        }
-
         this.loading.set(true);
         this.error.set(null);
 
-        this.eventService.getSignupDetail(eventId, signupId, token).subscribe({
+        this.eventService.getSignupDetail(eventId, signupId).subscribe({
             next: (response) => {
                 this.loading.set(false);
                 if (response.data) {
@@ -171,14 +164,8 @@ export class SignupDetailModalComponent {
             clearTimeout(this.deleteTimeout);
         }
 
-        const token = this.authService.getToken();
-        if (!token) {
-            this.error.set('Nicht autorisiert');
-            return;
-        }
-
         this.deleting.set(true);
-        this.eventService.deleteSignup(this.eventId(), this.signupId(), token).subscribe({
+        this.eventService.deleteSignup(this.eventId(), this.signupId()).subscribe({
             next: (response) => {
                 this.deleting.set(false);
                 if (response.error) {
