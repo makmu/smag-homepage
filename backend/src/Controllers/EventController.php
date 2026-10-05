@@ -481,36 +481,6 @@ final class EventController
         return $stmt->fetchAll();
     }
 
-    private function validateToken(string $authHeader): bool
-    {
-        if (!str_starts_with($authHeader, 'Bearer ')) {
-            return false;
-        }
-        
-        $token = substr($authHeader, 7);
-        
-        try {
-            $decoded = base64_decode($token);
-            if ($decoded === false) {
-                return false;
-            }
-            $parts = explode(':', $decoded);
-            if (count($parts) !== 2) {
-                return false;
-            }
-            $username = $parts[0];
-            
-            $users = [
-                'admin' => 'password123',
-                'smag' => 'fliederlich',
-            ];
-            
-            return isset($users[$username]);
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
     private function buildCsvData(array $signups): string
     {
         $headers = ['Name', 'E-Mail', 'Kommentar', 'Anmeldezeitpunkt'];
