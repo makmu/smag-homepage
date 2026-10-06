@@ -43,6 +43,8 @@ final class TokenAuthenticationMiddleware implements MiddlewareInterface
             'data' => null,
             'error' => 'Unauthorized',
         ]));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('WWW-Authenticate', 'Bearer error="invalid_token", error_description="The access token is missing or invalid"');
     }
 }
