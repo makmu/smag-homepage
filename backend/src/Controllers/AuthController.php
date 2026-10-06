@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Services\TokenService;
 use App\Services\UserService;
+use App\Support\BodyValidation;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -18,20 +19,19 @@ final class AuthController
 
     public function login(Request $request, Response $response): Response
     {
-        $data = $request->getParsedBody();
-        $email = $data['email'] ?? '';
-        $password = $data['password'] ?? '';
+        $data = BodyValidation::parsedBody($request);
 
-        if (empty($email) || empty($password)) {
+        $validationError = BodyValidation::requireStrings($data, ['email', 'password']);
+        if ($validationError !== null) {
             $payload = json_encode([
                 'data' => null,
-                'error' => 'Email and password are required',
+                'error' => $validationError,
             ]);
             $response->getBody()->write($payload);
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
 
-        $user = $this->userService->verifyPassword($email, $password);
+        $user = $this->userService->verifyPassword($data['email'], $data['password']);
 
         if ($user === null) {
             $payload = json_encode([
@@ -55,19 +55,19 @@ final class AuthController
 
     public function refresh(Request $request, Response $response): Response
     {
-        $data = $request->getParsedBody();
-        $refreshToken = $data['refresh_token'] ?? '';
+        $data = BodyValidation::parsedBody($request);
 
-        if (empty($refreshToken)) {
+        $validationError = BodyValidation::requireStrings($data, ['refresh_token']);
+        if ($validationError !== null) {
             $payload = json_encode([
                 'data' => null,
-                'error' => 'Refresh token is required',
+                'error' => $validationError,
             ]);
             $response->getBody()->write($payload);
             return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
         }
 
-        $tokens = $this->tokenService->refreshTokenPair($refreshToken);
+        $tokens = $this->tokenService->refreshTokenPair($data['refresh_token']);
 
         if ($tokens === null) {
             $payload = json_encode([
