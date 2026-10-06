@@ -15,7 +15,7 @@ $app = AppFactory::create();
 
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
-$app->add(new CorsMiddleware());
+$app->add(new CorsMiddleware($config['CORS_ALLOWED_ORIGINS'] ?? ['http://localhost:4200']));
 $app->add(new ApiResponseMiddleware());
 
 if (($config['SLOW_MODE_DELAY'] ?? 0) > 0) {
