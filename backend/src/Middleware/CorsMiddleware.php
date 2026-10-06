@@ -41,7 +41,10 @@ final class CorsMiddleware implements MiddlewareInterface
 
         if ($allowedOrigin !== null) {
             $response = $response->withHeader('Access-Control-Allow-Origin', $allowedOrigin);
-            $response = $response->withHeader('Access-Control-Allow-Credentials', 'true');
+            if ($allowedOrigin !== '*') {
+                $response = $response->withHeader('Access-Control-Allow-Credentials', 'true');
+            }
+            $response = $response->withHeader('Vary', 'Origin');
         }
 
         $response = $response->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -56,8 +59,10 @@ final class CorsMiddleware implements MiddlewareInterface
             return null;
         }
 
+        $normalizedOrigin = $this->normalizeOrigin($origin);
+
         foreach ($this->allowedOrigins as $allowedOrigin) {
-            if ($this->originMatches($origin, $allowedOrigin)) {
+            if ($this->originMatches($normalizedOrigin, $allowedOrigin)) {
                 return $allowedOrigin;
             }
         }
@@ -65,12 +70,31 @@ final class CorsMiddleware implements MiddlewareInterface
         return null;
     }
 
-    private function originMatches(string $origin, string $allowedOrigin): bool
+    private function originMatches(string $normalizedOrigin, string $allowedOrigin): bool
     {
         if ($allowedOrigin === '*') {
             return true;
         }
 
-        return $origin === $allowedOrigin;
+        return $normalizedOrigin === $this->normalizeOrigin($allowedOrigin);
+    }
+
+    private function normalizeOrigin(string $origin): string
+    {
+        $parsed = parse_url($origin);
+        if ($parsed === false) {
+            return $origin;
+        }
+
+        $scheme = strtolower($parsed['scheme'] ?? '');
+        $host = strtolower($parsed['host'] ?? '');
+        $port = $parsed['port'] ?? null;
+
+        $normalized = $scheme . '://' . $host;
+        if ($port !== null) {
+            $normalized .= ':' . $port;
+        }
+
+        return $normalized;
     }
 }
