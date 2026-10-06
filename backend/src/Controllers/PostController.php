@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database\Database;
+use App\Support\BodyValidation;
 use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -102,7 +103,7 @@ final class PostController
 
     public function createPost(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $data = $request->getParsedBody();
+        $data = BodyValidation::parsedBody($request);
 
         $validationError = $this->validatePostData($data);
         if ($validationError !== null) {
@@ -135,7 +136,7 @@ final class PostController
     public function updatePost(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $id = (int) $args['id'];
-        $data = $request->getParsedBody();
+        $data = BodyValidation::parsedBody($request);
 
         $post = $this->getPostById($id);
 
@@ -214,18 +215,17 @@ final class PostController
             return 'Missing required field: thumbnail_url or thumbnail_id';
         }
 
-        $missingFields = [];
-        foreach (self::REQUIRED_FIELDS as $field) {
-            if (empty($data[$field])) {
-                $missingFields[] = $field;
-            }
+        $validationError = BodyValidation::requireStrings($data, self::REQUIRED_FIELDS);
+        if ($validationError !== null) {
+            return $validationError;
         }
 
-        if (!empty($missingFields)) {
-            return 'Missing required fields: ' . implode(', ', $missingFields);
+        $optionalError = BodyValidation::validateOptionalStrings($data, ['thumbnail_url']);
+        if ($optionalError !== null) {
+            return $optionalError;
         }
 
-        return null;
+        return BodyValidation::validateOptionalInts($data, ['thumbnail_id']);
     }
 
     private function successResponse(ResponseInterface $response, array $data): ResponseInterface

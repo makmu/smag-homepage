@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\UserService;
+use App\Support\BodyValidation;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -29,17 +30,11 @@ final class UserController
 
     public function createUser(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        $data = $request->getParsedBody();
+        $data = BodyValidation::parsedBody($request);
 
-        $requiredFields = ['name', 'email', 'password'];
-        $missingFields = [];
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                $missingFields[] = $field;
-            }
-        }
-        if (!empty($missingFields)) {
-            return $this->errorResponse($response, 400, 'Missing required fields: ' . implode(', ', $missingFields));
+        $validationError = BodyValidation::requireStrings($data, ['name', 'email', 'password']);
+        if ($validationError !== null) {
+            return $this->errorResponse($response, 400, $validationError);
         }
 
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
@@ -50,13 +45,18 @@ final class UserController
             return $this->errorResponse($response, 400, 'Password must be at least 8 characters');
         }
 
+        $optionalError = BodyValidation::validateOptionalStrings($data, ['image_url']);
+        if ($optionalError !== null) {
+            return $this->errorResponse($response, 400, $optionalError);
+        }
+
         if ($this->userService->findByEmail($data['email']) !== null) {
             return $this->errorResponse($response, 409, 'A user with this email address already exists');
         }
 
         $name = htmlspecialchars(strip_tags(trim($data['name'])), ENT_QUOTES, 'UTF-8');
         $email = trim($data['email']);
-        $imageUrl = !empty($data['image_url']) ? $data['image_url'] : null;
+        $imageUrl = BodyValidation::string($data, 'image_url');
 
         try {
             $user = $this->userService->createUser($name, $email, $data['password']);
@@ -93,17 +93,23 @@ final class UserController
             return $this->errorResponse($response, 404, 'User not found');
         }
 
-        $data = $request->getParsedBody();
+        $data = BodyValidation::parsedBody($request);
 
-        if (empty($data['name']) || empty($data['email'])) {
-            return $this->errorResponse($response, 400, 'Missing required fields: name, email');
+        $validationError = BodyValidation::requireStrings($data, ['name', 'email']);
+        if ($validationError !== null) {
+            return $this->errorResponse($response, 400, $validationError);
         }
 
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             return $this->errorResponse($response, 400, 'Invalid email address');
         }
 
-        $password = !empty($data['password']) ? $data['password'] : null;
+        $optionalError = BodyValidation::validateOptionalStrings($data, ['password', 'image_url']);
+        if ($optionalError !== null) {
+            return $this->errorResponse($response, 400, $optionalError);
+        }
+
+        $password = BodyValidation::string($data, 'password');
         if ($password !== null && strlen($password) < 8) {
             return $this->errorResponse($response, 400, 'Password must be at least 8 characters');
         }
@@ -114,7 +120,11 @@ final class UserController
 
         $name = htmlspecialchars(strip_tags(trim($data['name'])), ENT_QUOTES, 'UTF-8');
         $email = trim($data['email']);
-        $imageUrl = $data['image_url'] ?? $existing['image_url'] ?? null;
+        // image_url: if key is present and is a string (even ""), use it to allow clearing.
+        // If absent or non-string, fall back to existing value.
+        $imageUrl = array_key_exists('image_url', $data) && is_string($data['image_url'])
+            ? $data['image_url']
+            : $existing['image_url'] ?? null;
 
         try {
             $user = $this->userService->updateUser($id, $name, $email, $password, $imageUrl);
